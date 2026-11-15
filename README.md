@@ -1,4 +1,4 @@
-# mynas
+# shelf
 
 A simple NAS for your home network. One binary, one config file, no database, no
 enterprise features. Runs directly on the host or in a rootless Podman container.
@@ -17,18 +17,18 @@ enterprise features. Runs directly on the host or in a rootless Podman container
 Requires Go 1.26 or newer.
 
 ```sh
-go build -o mynas .
+go build -o shelf .
 
 # for a Raspberry Pi 3/4/5 running a 64-bit OS:
-GOOS=linux GOARCH=arm64 go build -o mynas .
+GOOS=linux GOARCH=arm64 go build -o shelf .
 ```
 
 ## Quick start (just try it)
 
 ```sh
-export MYNAS_CONFIG=$PWD/mynas.json
-./mynas init -data ~/nas-data      # asks for a user name and password
-./mynas serve
+export SHELF_CONFIG=$PWD/shelf.json
+./shelf init -data ~/nas-data      # asks for a user name and password
+./shelf serve
 ```
 
 Open the printed address (e.g. `http://192.168.1.20:8080/`) in a browser.
@@ -36,20 +36,20 @@ Open the printed address (e.g. `http://192.168.1.20:8080/`) in a browser.
 ## Install as a service
 
 ```sh
-sudo install -m 755 mynas /usr/local/bin/mynas
-sudo useradd --system --home-dir /srv/mynas --shell /usr/sbin/nologin mynas
-sudo mkdir -p /srv/mynas && sudo chown mynas:mynas /srv/mynas
+sudo install -m 755 shelf /usr/local/bin/shelf
+sudo useradd --system --home-dir /srv/shelf --shell /usr/sbin/nologin shelf
+sudo mkdir -p /srv/shelf && sudo chown shelf:shelf /srv/shelf
 
-sudo mynas init -data /srv/mynas
-sudo chown mynas:mynas /etc/mynas/config.json
+sudo shelf init -data /srv/shelf
+sudo chown shelf:shelf /etc/shelf/config.json
 
-sudo install -m 644 mynas.service /etc/systemd/system/
-sudo systemctl enable --now mynas
-journalctl -u mynas            # shows the addresses it is reachable on
+sudo install -m 644 shelf.service /etc/systemd/system/
+sudo systemctl enable --now shelf
+journalctl -u shelf            # shows the addresses it is reachable on
 ```
 
 If you'd rather keep files owned by your own account, set `User=`/`Group=` in
-`mynas.service` to your user and run `init` with `-data` pointing to a directory
+`shelf.service` to your user and run `init` with `-data` pointing to a directory
 you own. If share directories are under `/home`, remove `ProtectHome=read-only`.
 
 ## Run in a container (Podman, rootless, e.g. Fedora Silverblue)
@@ -60,33 +60,33 @@ rootless via a [Quadlet](https://docs.podman.io/en/latest/markdown/podman-system
 unit with a read-only root file system, no capabilities and `no-new-privileges`.
 
 Config and files are **bind mounts** of plain host directories:
-`~/.config/mynas` → `/config` and `~/nas-data` → `/data`. With
+`~/.config/shelf` → `/config` and `~/nas-data` → `/data`. With
 `UserNS=keep-id`, the container user is mapped to your own user, so the files on
 the host belong to you and you can back them up, browse them or move them to
 another disk like any other files. Edit the `Volume=` lines in
-`deploy/mynas.container` to keep the data somewhere else, e.g. on a second disk
+`deploy/shelf.container` to keep the data somewhere else, e.g. on a second disk
 under `/var/mnt`.
 
 ```sh
-podman build -t localhost/mynas:latest .
-mkdir -p ~/.config/mynas ~/nas-data
+podman build -t localhost/shelf:latest .
+mkdir -p ~/.config/shelf ~/nas-data
 
 # create the config and the first user
 podman run --rm -it --userns keep-id:uid=65532,gid=65532 \
-  -v ~/.config/mynas:/config:z -v ~/nas-data:/data:z \
-  localhost/mynas init -data /data -listen :8443
+  -v ~/.config/shelf:/config:z -v ~/nas-data:/data:z \
+  localhost/shelf init -data /data -listen :8443
 
 # turn on HTTPS: list the names and IPs your devices use to reach the NAS
-podman run --rm --userns keep-id:uid=65532,gid=65532 -v ~/.config/mynas:/config:z \
-  localhost/mynas cert -hosts nas.local,192.168.1.20
+podman run --rm --userns keep-id:uid=65532,gid=65532 -v ~/.config/shelf:/config:z \
+  localhost/shelf cert -hosts nas.local,192.168.1.20
 
 # install and start the service
 mkdir -p ~/.config/containers/systemd
-cp deploy/mynas.container ~/.config/containers/systemd/
+cp deploy/shelf.container ~/.config/containers/systemd/
 systemctl --user daemon-reload
-systemctl --user start mynas
+systemctl --user start shelf
 loginctl enable-linger $USER     # keep it running when you are logged out
-journalctl --user -u mynas       # logs
+journalctl --user -u shelf       # logs
 ```
 
 Then open `https://<your-nas>:8443/` and trust the certificate (see [HTTPS](#https)).
@@ -96,33 +96,33 @@ above 1024. Elsewhere, run `sudo firewall-cmd --permanent --add-port=8443/tcp &&
 Manage users and shares inside the running container (changes apply without restart):
 
 ```sh
-alias mynas='podman exec -it mynas /mynas'
-mynas user add mom
-mynas share add photos /data/photos
+alias shelf='podman exec -it shelf /shelf'
+shelf user add mom
+shelf share add photos /data/photos
 ```
 
 Paths in the config are paths inside the container, so new shares go under
 `/data`. To share another host directory, add a `Volume=` line to the unit first.
 
-To update: pull the new source, run `podman build -t localhost/mynas:latest .`
-again and then `podman auto-update` (or `systemctl --user restart mynas`).
+To update: pull the new source, run `podman build -t localhost/shelf:latest .`
+again and then `podman auto-update` (or `systemctl --user restart shelf`).
 
 ### Automatic backups
 
-`deploy/mynas-backup` takes a snapshot of `~/.config/mynas` and `~/nas-data` with
+`deploy/shelf-backup` takes a snapshot of `~/.config/shelf` and `~/nas-data` with
 rsync once a day. Each snapshot is a normal directory with a full copy you can
 browse. Files that didn't change are hard links to the previous snapshot, so
 each snapshot only uses space for what changed. Restoring is just copying files
 back.
 
 ```sh
-install -D -m 755 deploy/mynas-backup ~/.local/bin/mynas-backup
-cp deploy/mynas-backup.service deploy/mynas-backup.timer ~/.config/systemd/user/
-echo 'BACKUP_DEST=/run/media/'$USER'/backupdisk/mynas' > ~/.config/mynas/backup.env
-mkdir -p /run/media/$USER/backupdisk/mynas    # on the backup disk, once
+install -D -m 755 deploy/shelf-backup ~/.local/bin/shelf-backup
+cp deploy/shelf-backup.service deploy/shelf-backup.timer ~/.config/systemd/user/
+echo 'BACKUP_DEST=/run/media/'$USER'/backupdisk/shelf' > ~/.config/shelf/backup.env
+mkdir -p /run/media/$USER/backupdisk/shelf    # on the backup disk, once
 systemctl --user daemon-reload
-systemctl --user enable --now mynas-backup.timer
-systemctl --user start mynas-backup           # first backup now
+systemctl --user enable --now shelf-backup.timer
+systemctl --user start shelf-backup           # first backup now
 ```
 
 The destination must exist already. If it is missing (backup disk not mounted),
@@ -133,14 +133,14 @@ different disk, ideally one you can also keep somewhere else.
 ## HTTPS
 
 ```sh
-mynas cert                                   # on the host: names and IPs are detected
-mynas cert -hosts nas.local,192.168.1.20     # or list them yourself (required in a container)
+shelf cert                                   # on the host: names and IPs are detected
+shelf cert -hosts nas.local,192.168.1.20     # or list them yourself (required in a container)
 ```
 
 This creates a small private certificate authority (`ca.crt`, `ca.key` next to
 the config file) and a server certificate signed by it, and turns on HTTPS in
-the config. Restart mynas afterwards. No domain, no Let's Encrypt, no internet
-access needed, and no reverse proxy: mynas does TLS itself.
+the config. Restart shelf afterwards. No domain, no Let's Encrypt, no internet
+access needed, and no reverse proxy: shelf does TLS itself.
 
 **Each device has to trust the CA once.** Without that, browsers show a warning
 and some clients (Windows Explorer in particular) refuse to connect at all.
@@ -149,21 +149,21 @@ install the downloaded file:
 
 | System | How |
 |---|---|
-| Fedora / Linux | `sudo trust anchor --store mynas-ca.crt` (Firefox: Settings → Certificates → Import) |
+| Fedora / Linux | `sudo trust anchor --store shelf-ca.crt` (Firefox: Settings → Certificates → Import) |
 | Windows | double-click → *Install Certificate* → *Local Machine* → *Trusted Root Certification Authorities* |
 | macOS | double-click → Keychain *System* → open the certificate → *Trust* → *Always Trust* |
 | iOS / iPadOS | open the link in Safari → Settings → *Profile Downloaded* → install, then Settings → General → About → Certificate Trust Settings → turn it on |
 | Android | Settings → Security → *Encryption & credentials* → *Install a certificate* → *CA certificate* |
 
 After that, the connection is trusted without warnings. You only do this once
-per device: mynas renews its server certificate automatically before it
-expires, and running `mynas cert -hosts ...` again for new names or IPs keeps
+per device: shelf renews its server certificate automatically before it
+expires, and running `shelf cert -hosts ...` again for new names or IPs keeps
 the same CA.
 
 The CA is name-constrained: it can only sign for private IP addresses,
 `.local`, `.lan`, `.home.arpa`, `.internal` and the names given when it was
 created. So even if `ca.key` leaks, it can't be used against other websites on
-your devices. If you later need a name it doesn't cover, `mynas cert -new-ca`
+your devices. If you later need a name it doesn't cover, `shelf cert -new-ca`
 creates a new CA, and every device has to trust the new one.
 
 You can also use your own certificate: set `tls_cert` and `tls_key` in the
@@ -172,26 +172,26 @@ config.
 ## Managing users and shares
 
 ```sh
-mynas user add mom                 # asks for a password
-mynas user passwd mom
-mynas user del mom
-mynas user list
+shelf user add mom                 # asks for a password
+shelf user passwd mom
+shelf user del mom
+shelf user list
 
-mynas share add photos /mnt/usb/photos                  # everyone, read-write
-mynas share add movies /mnt/usb/movies -ro              # everyone, read-only
-mynas share add taxes  /srv/mynas/taxes -users florian  # only florian
-mynas share del photos                                  # files are kept
-mynas share list
+shelf share add photos /mnt/usb/photos                  # everyone, read-write
+shelf share add movies /mnt/usb/movies -ro              # everyone, read-only
+shelf share add taxes  /srv/shelf/taxes -users florian  # only florian
+shelf share del photos                                  # files are kept
+shelf share list
 ```
 
 A running server picks up changes automatically, so you don't need to restart it.
-Use `sudo` (or `-c FILE` / `MYNAS_CONFIG`) when the config is in `/etc/mynas`.
+Use `sudo` (or `-c FILE` / `SHELF_CONFIG`) when the config is in `/etc/shelf`.
 
 ## Connecting as a network drive
 
 The WebDAV address is `http://<your-nas>:8080/dav/` (with HTTPS:
 `https://<your-nas>:8443/dav/`, and `davs://` instead of `dav://` in the Linux
-file managers). Log in with your mynas user
+file managers). Log in with your shelf user
 name and password. The "Connect a drive" button in the web UI shows the exact
 address.
 
@@ -218,7 +218,7 @@ raise `FileSizeLimitInBytes` (same registry key, max `0xffffffff`), or use
 
 ## Configuration file
 
-`/etc/mynas/config.json` (or `-c FILE`, or `$MYNAS_CONFIG`):
+`/etc/shelf/config.json` (or `-c FILE`, or `$SHELF_CONFIG`):
 
 ```json
 {
@@ -227,21 +227,21 @@ raise `FileSizeLimitInBytes` (same registry key, max `0xffffffff`), or use
     { "name": "florian", "password_hash": "$2a$10$..." }
   ],
   "shares": [
-    { "name": "files",  "path": "/srv/mynas" },
+    { "name": "files",  "path": "/srv/shelf" },
     { "name": "movies", "path": "/mnt/usb/movies", "read_only": true },
-    { "name": "taxes",  "path": "/srv/mynas-taxes", "users": ["florian"] }
+    { "name": "taxes",  "path": "/srv/shelf-taxes", "users": ["florian"] }
   ]
 }
 ```
 
 To change `listen`, edit the file and restart the server. Optional:
 `"tls_cert"` and `"tls_key"` (PEM file paths) turn on HTTPS, and `"tls_ca"` is
-offered for download at `/ca.crt`. `mynas cert` sets all three.
+offered for download at `/ca.crt`. `shelf cert` sets all three.
 
 ## Security notes
 
-mynas is meant for a trusted home network. Traffic is unencrypted plain HTTP
-unless you turn on HTTPS with `mynas cert`. Don't expose mynas directly to the internet. For
+shelf is meant for a trusted home network. Traffic is unencrypted plain HTTP
+unless you turn on HTTPS with `shelf cert`. Don't expose shelf directly to the internet. For
 access from outside, use a VPN such as WireGuard or Tailscale.
 
 ## Layout of the code

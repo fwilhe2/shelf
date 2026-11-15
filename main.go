@@ -1,4 +1,4 @@
-// Command mynas is a small, simple NAS for the home network: a web UI to
+// Command shelf is a small, simple NAS for the home network: a web UI to
 // browse, upload and download files, and WebDAV so shares can be mounted as
 // network drives on Linux, macOS and Windows.
 package main
@@ -26,24 +26,24 @@ import (
 	"golang.org/x/term"
 )
 
-const usageText = `mynas - simple home NAS
+const usageText = `shelf - simple home NAS
 
 Usage:
-  mynas init  [-data DIR] [-listen ADDR]     create a config with one share and a first user
-  mynas serve                                run the server
+  shelf init  [-data DIR] [-listen ADDR]     create a config with one share and a first user
+  shelf serve                                run the server
 
-  mynas user list
-  mynas user add NAME                        add a user (asks for a password)
-  mynas user passwd NAME                     change a password
-  mynas user del NAME
+  shelf user list
+  shelf user add NAME                        add a user (asks for a password)
+  shelf user passwd NAME                     change a password
+  shelf user del NAME
 
-  mynas share list
-  mynas share add NAME DIR [-ro] [-users a,b]  share a directory (default: all users, read-write)
-  mynas share del NAME                       stop sharing (files are kept)
+  shelf share list
+  shelf share add NAME DIR [-ro] [-users a,b]  share a directory (default: all users, read-write)
+  shelf share del NAME                       stop sharing (files are kept)
 
-  mynas cert [-hosts a,b] [-new-ca]          turn on HTTPS with a certificate from a private CA
+  shelf cert [-hosts a,b] [-new-ca]          turn on HTTPS with a certificate from a private CA
 
-Every command accepts -c FILE (default: $MYNAS_CONFIG or /etc/mynas/config.json).
+Every command accepts -c FILE (default: $SHELF_CONFIG or /etc/shelf/config.json).
 Changes to users and shares are picked up by a running server automatically.
 `
 
@@ -80,14 +80,14 @@ func main() {
 }
 
 func defaultConfigPath() string {
-	if p := os.Getenv("MYNAS_CONFIG"); p != "" {
+	if p := os.Getenv("SHELF_CONFIG"); p != "" {
 		return p
 	}
-	return "/etc/mynas/config.json"
+	return "/etc/shelf/config.json"
 }
 
 func newFlags(name string) (*flag.FlagSet, *string) {
-	fs := flag.NewFlagSet("mynas "+name, flag.ContinueOnError)
+	fs := flag.NewFlagSet("shelf "+name, flag.ContinueOnError)
 	cfg := fs.String("c", defaultConfigPath(), "config file")
 	return fs, cfg
 }
@@ -106,7 +106,7 @@ func parseArgs(fs *flag.FlagSet, args []string, wantPositional int) ([]string, e
 		pos, args = append(pos, args[0]), args[1:]
 	}
 	if len(pos) != wantPositional {
-		return nil, fmt.Errorf("expected %d argument(s), got %d (see 'mynas help')", wantPositional, len(pos))
+		return nil, fmt.Errorf("expected %d argument(s), got %d (see 'shelf help')", wantPositional, len(pos))
 	}
 	return pos, nil
 }
@@ -127,7 +127,7 @@ func readLine(prompt string) (string, error) {
 }
 
 func readSecret(prompt string) (string, error) {
-	if !isTerminal() { // allow: echo secret | mynas user add bob
+	if !isTerminal() { // allow: echo secret | shelf user add bob
 		return readLine("")
 	}
 	fmt.Fprint(os.Stderr, prompt)
@@ -161,7 +161,7 @@ func promptNewPasswordHash(user string) (string, error) {
 
 func cmdInit(args []string) error {
 	fs, cfgPath := newFlags("init")
-	dataDir := fs.String("data", "/srv/mynas", "directory to store files in")
+	dataDir := fs.String("data", "/srv/shelf", "directory to store files in")
 	listen := fs.String("listen", ":8080", "address to listen on")
 	if _, err := parseArgs(fs, args, 0); err != nil {
 		return err
@@ -204,7 +204,7 @@ func cmdInit(args []string) error {
 	if err := cfg.Save(*cfgPath); err != nil {
 		return err
 	}
-	fmt.Printf("Created %s with share \"files\" -> %s\nStart the server with: mynas serve -c %s\n", *cfgPath, dir, *cfgPath)
+	fmt.Printf("Created %s with share \"files\" -> %s\nStart the server with: shelf serve -c %s\n", *cfgPath, dir, *cfgPath)
 	return nil
 }
 
@@ -254,7 +254,7 @@ func cmdServe(args []string) error {
 	if cfg.TLSCert != "" {
 		scheme = "https"
 	}
-	log.Printf("mynas is running. Open one of these in a browser:")
+	log.Printf("shelf is running. Open one of these in a browser:")
 	for _, u := range urls(scheme, ln.Addr().(*net.TCPAddr)) {
 		log.Printf("  %s/        (WebDAV: %s/dav/)", u, u)
 	}
@@ -302,7 +302,7 @@ func urls(scheme string, addr *net.TCPAddr) []string {
 
 func cmdUser(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: mynas user list|add|passwd|del [NAME]")
+		return errors.New("usage: shelf user list|add|passwd|del [NAME]")
 	}
 	sub, args := args[0], args[1:]
 	fs, cfgPath := newFlags("user " + sub)
@@ -365,7 +365,7 @@ func cmdUser(args []string) error {
 
 func cmdShare(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: mynas share list|add|del ...")
+		return errors.New("usage: shelf share list|add|del ...")
 	}
 	sub, args := args[0], args[1:]
 	fs, cfgPath := newFlags("share " + sub)

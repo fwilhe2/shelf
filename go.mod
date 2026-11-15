@@ -1,4 +1,4 @@
-module github.com/fwilhe2/mynas
+module github.com/fwilhe2/shelf
 
 go 1.26.0
 

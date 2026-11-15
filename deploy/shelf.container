@@ -1,12 +1,12 @@
-# Podman Quadlet unit for running mynas as a rootless user service.
+# Podman Quadlet unit for running shelf as a rootless user service.
 # Install: copy to ~/.config/containers/systemd/ and run `systemctl --user daemon-reload`.
 
 [Unit]
-Description=mynas - simple home NAS
+Description=shelf - simple home NAS
 
 [Container]
-ContainerName=mynas
-Image=localhost/mynas:latest
+ContainerName=shelf
+Image=localhost/shelf:latest
 # `podman auto-update` restarts the service when the local image was rebuilt.
 AutoUpdate=local
 PublishPort=8443:8443
@@ -22,10 +22,10 @@ UserNS=keep-id:uid=65532,gid=65532
 # :z (shared SELinux label, not :Z) so the label is set once and kept; :Z
 # would relabel the whole data tree on every start, since each new container
 # gets new MCS categories.
-Volume=%h/.config/mynas:/config:z
+Volume=%h/.config/shelf:/config:z
 Volume=%h/nas-data:/data:z
 
-# Hardening: mynas only writes to /config and /data.
+# Hardening: shelf only writes to /config and /data.
 ReadOnly=true
 ReadOnlyTmpfs=false
 DropCapability=ALL

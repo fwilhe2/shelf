@@ -1,6 +1,6 @@
 package main
 
-// HTTPS without a public certificate authority: `mynas cert` creates a small
+// HTTPS without a public certificate authority: `shelf cert` creates a small
 // private CA once and uses it to sign the server certificate. Each device
 // trusts the CA once (download it from /ca.crt), and from then on the
 // connection is trusted, even when the server certificate is renewed or
@@ -98,8 +98,8 @@ func cmdCert(args []string) error {
 	if err := cfg.Save(*cfgPath); err != nil {
 		return err
 	}
-	fmt.Printf(`Created a certificate for %s (mynas renews it automatically).
-HTTPS is turned on. Restart mynas to use it.
+	fmt.Printf(`Created a certificate for %s (shelf renews it automatically).
+HTTPS is turned on. Restart shelf to use it.
 
 On every device, open https://<your-nas>%s/ca.crt (accept the warning once),
 and trust the downloaded certificate. See the README for how this works on
@@ -162,7 +162,7 @@ func createCA(crtPath, keyPath string, dnsNames []string, ips []net.IP) (*x509.C
 	host, _ := os.Hostname()
 	tmpl := &x509.Certificate{
 		SerialNumber:          serial,
-		Subject:               pkix.Name{CommonName: "mynas CA " + host, Organization: []string{"mynas"}},
+		Subject:               pkix.Name{CommonName: "shelf CA " + host, Organization: []string{"shelf"}},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(caValidity),
 		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
@@ -215,7 +215,7 @@ func issueCert(crtPath, keyPath string, ca *x509.Certificate, caKey crypto.Signe
 	if err != nil {
 		return err
 	}
-	cn := "mynas"
+	cn := "shelf"
 	if len(dnsNames) > 0 {
 		cn = dnsNames[0]
 	}
@@ -257,7 +257,7 @@ func writeKeyPair(crtPath, keyPath string, der []byte, key *ecdsa.PrivateKey) er
 }
 
 func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".mynas-*")
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".shelf-*")
 	if err != nil {
 		return err
 	}
@@ -280,7 +280,7 @@ func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
 // ---------------------------------------------------------------- serving
 
 // certStore serves the configured certificate. It picks up a changed file
-// without a restart and renews a certificate issued by `mynas cert` shortly
+// without a restart and renews a certificate issued by `shelf cert` shortly
 // before it expires (when ca.key is next to the CA certificate).
 type certStore struct {
 	crt, key, caCrt string

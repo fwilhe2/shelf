@@ -1,22 +1,22 @@
 #!/bin/bash
-# mynas-backup: daily snapshots of the mynas config and data with rsync.
+# shelf-backup: daily snapshots of the shelf config and data with rsync.
 #
 # Each run creates DEST/YYYY-MM-DDTHHMMSS/ with a full, browsable copy. Files
 # that did not change since the last snapshot are hard links, so a snapshot
 # only costs the space of what changed. To restore, just copy files back.
 #
-# Settings (optional) in ~/.config/mynas/backup.env:
-#   BACKUP_DEST=/run/media/$USER/backupdisk/mynas   # required, must already exist
-#   BACKUP_SOURCES="$HOME/.config/mynas $HOME/nas-data"
+# Settings (optional) in ~/.config/shelf/backup.env:
+#   BACKUP_DEST=/run/media/$USER/backupdisk/shelf   # required, must already exist
+#   BACKUP_SOURCES="$HOME/.config/shelf $HOME/nas-data"
 #   BACKUP_KEEP=14                                   # number of snapshots to keep
 set -euo pipefail
 
-conf=${XDG_CONFIG_HOME:-$HOME/.config}/mynas/backup.env
+conf=${XDG_CONFIG_HOME:-$HOME/.config}/shelf/backup.env
 # shellcheck source=/dev/null
 [[ -r $conf ]] && . "$conf"
 
 dest=${BACKUP_DEST:?set BACKUP_DEST in $conf}
-read -r -a sources <<< "${BACKUP_SOURCES:-$HOME/.config/mynas $HOME/nas-data}"
+read -r -a sources <<< "${BACKUP_SOURCES:-$HOME/.config/shelf $HOME/nas-data}"
 keep=${BACKUP_KEEP:-14}
 
 # Never create the destination: if it is missing, the backup disk is probably

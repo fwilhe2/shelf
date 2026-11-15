@@ -1,8 +1,0 @@
-[Unit]
-Description=Back up mynas config and data
-
-[Service]
-Type=oneshot
-ExecStart=%h/.local/bin/mynas-backup
-Nice=10
-IOSchedulingClass=idle

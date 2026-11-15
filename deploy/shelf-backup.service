@@ -1,0 +1,8 @@
+[Unit]
+Description=Back up shelf config and data
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/shelf-backup
+Nice=10
+IOSchedulingClass=idle

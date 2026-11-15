@@ -32,7 +32,7 @@ func (s Share) AllowedFor(user string) bool {
 	return len(s.Users) == 0 || slices.Contains(s.Users, user)
 }
 
-// Config is the whole mynas configuration, stored as a single JSON file.
+// Config is the whole shelf configuration, stored as a single JSON file.
 type Config struct {
 	Listen  string  `json:"listen"`
 	TLSCert string  `json:"tls_cert,omitempty"`
@@ -124,7 +124,7 @@ func LoadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("config %s not found (run 'mynas init' first, or pass -c)", path)
+			return nil, fmt.Errorf("config %s not found (run 'shelf init' first, or pass -c)", path)
 		}
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (c *Config) Save(path string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, ".mynas-config-*")
+	tmp, err := os.CreateTemp(dir, ".shelf-config-*")
 	if err != nil {
 		return err
 	}

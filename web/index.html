@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mynas</title>
+<title>shelf</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='13' width='18' height='7' rx='2'/%3E%3Cpath d='M5 13 7 5h10l2 8M7 16.5h.01'/%3E%3C/svg%3E">
 <style>
   :root {
@@ -130,7 +130,7 @@
 <body>
 
 <div id="login" class="login" hidden>
-  <h1><svg class="i" viewBox="0 0 24 24"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M5 13 7 5h10l2 8M7 16.5h.01"/></svg>mynas</h1>
+  <h1><svg class="i" viewBox="0 0 24 24"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M5 13 7 5h10l2 8M7 16.5h.01"/></svg>shelf</h1>
   <form id="login-form">
     <label for="u">Username</label>
     <input id="u" type="text" autocomplete="username" autocapitalize="none" required>
@@ -143,7 +143,7 @@
 
 <div id="app" hidden>
   <header>
-    <a class="brand" href="#/"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M5 13 7 5h10l2 8M7 16.5h.01"/></svg>mynas</a>
+    <a class="brand" href="#/"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M5 13 7 5h10l2 8M7 16.5h.01"/></svg>shelf</a>
     <div class="spacer"></div>
     <span class="who" id="who"></span>
     <button class="btn" id="connect-btn"><span data-icon="link"></span><span class="hide-sm">Connect a drive</span></button>
@@ -238,7 +238,7 @@ function toast(msg, err = false) {
 }
 
 // ---------- server calls
-const HDR = { 'X-Requested-With': 'mynas' };
+const HDR = { 'X-Requested-With': 'shelf' };
 async function api(url, opts = {}) {
   const r = await fetch(url, { ...opts, headers: { ...HDR, ...(opts.headers || {}) } });
   if (r.status === 401) { showLogin(); throw new Error('Please log in'); }
@@ -262,7 +262,7 @@ function putFile(p, file, onProgress) {
   return new Promise((resolve, reject) => {
     const x = new XMLHttpRequest();
     x.open('PUT', dav(p));
-    x.setRequestHeader('X-Requested-With', 'mynas');
+    x.setRequestHeader('X-Requested-With', 'shelf');
     x.upload.onprogress = e => e.lengthComputable && onProgress(e.loaded / e.total);
     x.onload = () => x.status < 300 ? resolve() : reject(new Error(x.status === 507 ? 'disk full' : x.status + ' ' + x.statusText));
     x.onerror = () => reject(new Error('network error'));
@@ -337,7 +337,7 @@ function renderCrumbs() {
 function renderShares(shares) {
   renderCrumbs();
   if (!shares.length) {
-    $('view').replaceChildren(el('div', { class: 'panel empty' }, 'No shares available for you yet. Add one with: mynas share add NAME DIR'));
+    $('view').replaceChildren(el('div', { class: 'panel empty' }, 'No shares available for you yet. Add one with: shelf share add NAME DIR'));
     return;
   }
   $('view').replaceChildren(el('div', { class: 'shares' }, shares.map(s => {
@@ -422,7 +422,7 @@ async function connect() {
       el('dt', {}, 'macOS Finder'), el('dd', {}, `Go → Connect to Server (⌘K) → ${url}`),
       el('dt', {}, 'Windows Explorer'), el('dd', {}, `This PC → Map network drive → ${url}` + (secure ? '' : ' (plain HTTP needs a registry tweak, see README)')),
       el('dt', {}, 'Phones & other apps'), el('dd', {}, 'Any WebDAV client works, e.g. rclone, Cyberduck, or a file manager app with WebDAV support.'),
-      ca && el('dt', {}, 'Certificate'), ca && el('dd', {}, 'If a device warns about the connection, ', el('a', { href: '/ca.crt' }, 'download the mynas certificate'), ' and install it as trusted on that device (see README).'))],
+      ca && el('dt', {}, 'Certificate'), ca && el('dd', {}, 'If a device warns about the connection, ', el('a', { href: '/ca.crt' }, 'download the shelf certificate'), ' and install it as trusted on that device (see README).'))],
   });
 }
 

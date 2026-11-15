@@ -30,7 +30,7 @@ var indexHTML []byte
 
 const (
 	davPrefix     = "/dav"
-	sessionCookie = "mynas_session"
+	sessionCookie = "shelf_session"
 	sessionTTL    = 30 * 24 * time.Hour
 	authCacheTTL  = 10 * time.Minute
 )
@@ -87,7 +87,7 @@ func (s *Server) reload() error {
 }
 
 // watchConfig reloads the config when the file changes, so that
-// 'mynas user add' etc. take effect without a restart.
+// 'shelf user add' etc. take effect without a restart.
 func (s *Server) watchConfig(ctx context.Context) {
 	t := time.NewTicker(2 * time.Second)
 	defer t.Stop()
@@ -323,7 +323,7 @@ func (s *Server) handleCACert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/x-x509-ca-cert")
-	w.Header().Set("Content-Disposition", `attachment; filename="mynas-ca.crt"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="shelf-ca.crt"`)
 	w.Write(data)
 }
 
@@ -487,7 +487,7 @@ func (s *Server) handleDAV(w http.ResponseWriter, r *http.Request) {
 	if user == "" {
 		// Our own web UI sets X-Requested-With and must not trigger the browser's login popup.
 		if r.Header.Get("X-Requested-With") == "" {
-			w.Header().Set("WWW-Authenticate", `Basic realm="mynas", charset="UTF-8"`)
+			w.Header().Set("WWW-Authenticate", `Basic realm="shelf", charset="UTF-8"`)
 		}
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
