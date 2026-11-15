@@ -1,0 +1,22 @@
+[Unit]
+Description=mynas - simple home NAS
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Service]
+# The user that owns the stored files. Must be able to read /etc/mynas/config.json
+# and write to all share directories.
+User=mynas
+Group=mynas
+ExecStart=/usr/local/bin/mynas serve -c /etc/mynas/config.json
+Restart=on-failure
+UMask=0002
+
+# Hardening: mynas only needs to touch its share directories.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target
