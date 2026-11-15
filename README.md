@@ -255,3 +255,8 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 | `fs.go` | the virtual file system: `/` lists shares, each share is an `os.Root` |
 | `web/index.html` | the whole web UI, embedded into the binary |
 | `Containerfile`, `deploy/` | container image, Quadlet unit, backup script and timer |
+
+## License
+
+shelf is licensed under the GNU Affero General Public License v3.0 or later, see
+[LICENSE](LICENSE).
