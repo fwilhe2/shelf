@@ -37,6 +37,7 @@ type Config struct {
 	Listen  string  `json:"listen"`
 	TLSCert string  `json:"tls_cert,omitempty"`
 	TLSKey  string  `json:"tls_key,omitempty"`
+	TLSCA   string  `json:"tls_ca,omitempty"` // offered for download at /ca.crt
 	Users   []User  `json:"users"`
 	Shares  []Share `json:"shares"`
 }
@@ -59,6 +60,9 @@ func (c *Config) Validate() error {
 	}
 	if (c.TLSCert == "") != (c.TLSKey == "") {
 		return errors.New("tls_cert and tls_key must be set together")
+	}
+	if c.TLSCA != "" && c.TLSCert == "" {
+		return errors.New("tls_ca needs tls_cert and tls_key")
 	}
 	users := map[string]bool{}
 	for _, u := range c.Users {

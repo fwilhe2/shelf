@@ -74,7 +74,11 @@ mkdir -p ~/.config/mynas ~/nas-data
 # create the config and the first user
 podman run --rm -it --userns keep-id:uid=65532,gid=65532 \
   -v ~/.config/mynas:/config:z -v ~/nas-data:/data:z \
-  localhost/mynas init -data /data
+  localhost/mynas init -data /data -listen :8443
+
+# turn on HTTPS: list the names and IPs your devices use to reach the NAS
+podman run --rm --userns keep-id:uid=65532,gid=65532 -v ~/.config/mynas:/config:z \
+  localhost/mynas cert -hosts nas.local,192.168.1.20
 
 # install and start the service
 mkdir -p ~/.config/containers/systemd
@@ -84,6 +88,10 @@ systemctl --user start mynas
 loginctl enable-linger $USER     # keep it running when you are logged out
 journalctl --user -u mynas       # logs
 ```
+
+Then open `https://<your-nas>:8443/` and trust the certificate (see [HTTPS](#https)).
+Fedora's default firewall zone on Workstation/Silverblue already allows ports
+above 1024. Elsewhere, run `sudo firewall-cmd --permanent --add-port=8443/tcp && sudo firewall-cmd --reload`.
 
 Manage users and shares inside the running container (changes apply without restart):
 
@@ -122,6 +130,45 @@ the backup fails instead of filling up the system disk. The last 14 snapshots
 are kept (`BACKUP_KEEP=` in `backup.env`). The destination should be on a
 different disk, ideally one you can also keep somewhere else.
 
+## HTTPS
+
+```sh
+mynas cert                                   # on the host: names and IPs are detected
+mynas cert -hosts nas.local,192.168.1.20     # or list them yourself (required in a container)
+```
+
+This creates a small private certificate authority (`ca.crt`, `ca.key` next to
+the config file) and a server certificate signed by it, and turns on HTTPS in
+the config. Restart mynas afterwards. No domain, no Let's Encrypt, no internet
+access needed, and no reverse proxy: mynas does TLS itself.
+
+**Each device has to trust the CA once.** Without that, browsers show a warning
+and some clients (Windows Explorer in particular) refuse to connect at all.
+Open `https://<your-nas>:8443/ca.crt`, accept the warning this one time, and
+install the downloaded file:
+
+| System | How |
+|---|---|
+| Fedora / Linux | `sudo trust anchor --store mynas-ca.crt` (Firefox: Settings → Certificates → Import) |
+| Windows | double-click → *Install Certificate* → *Local Machine* → *Trusted Root Certification Authorities* |
+| macOS | double-click → Keychain *System* → open the certificate → *Trust* → *Always Trust* |
+| iOS / iPadOS | open the link in Safari → Settings → *Profile Downloaded* → install, then Settings → General → About → Certificate Trust Settings → turn it on |
+| Android | Settings → Security → *Encryption & credentials* → *Install a certificate* → *CA certificate* |
+
+After that, the connection is trusted without warnings. You only do this once
+per device: mynas renews its server certificate automatically before it
+expires, and running `mynas cert -hosts ...` again for new names or IPs keeps
+the same CA.
+
+The CA is name-constrained: it can only sign for private IP addresses,
+`.local`, `.lan`, `.home.arpa`, `.internal` and the names given when it was
+created. So even if `ca.key` leaks, it can't be used against other websites on
+your devices. If you later need a name it doesn't cover, `mynas cert -new-ca`
+creates a new CA, and every device has to trust the new one.
+
+You can also use your own certificate: set `tls_cert` and `tls_key` in the
+config.
+
 ## Managing users and shares
 
 ```sh
@@ -142,7 +189,9 @@ Use `sudo` (or `-c FILE` / `MYNAS_CONFIG`) when the config is in `/etc/mynas`.
 
 ## Connecting as a network drive
 
-The WebDAV address is `http://<your-nas>:8080/dav/`. Log in with your mynas user
+The WebDAV address is `http://<your-nas>:8080/dav/` (with HTTPS:
+`https://<your-nas>:8443/dav/`, and `davs://` instead of `dav://` in the Linux
+file managers). Log in with your mynas user
 name and password. The "Connect a drive" button in the web UI shows the exact
 address.
 
@@ -155,7 +204,7 @@ address.
 | Linux, permanent mount | `davfs2` (`mount -t davfs http://<your-nas>:8080/dav/ /mnt/nas`) or `rclone mount` |
 | Android / iOS | any file manager with WebDAV support |
 
-**Windows over plain HTTP:** Windows refuses passwords over unencrypted HTTP
+**Windows over plain HTTP:** with HTTPS (and the CA trusted), nothing to do here. Windows refuses passwords over unencrypted HTTP
 unless you allow it once. In an admin shell, run:
 
 ```
@@ -186,12 +235,13 @@ raise `FileSizeLimitInBytes` (same registry key, max `0xffffffff`), or use
 ```
 
 To change `listen`, edit the file and restart the server. Optional:
-`"tls_cert"` and `"tls_key"` (PEM file paths) turn on HTTPS.
+`"tls_cert"` and `"tls_key"` (PEM file paths) turn on HTTPS, and `"tls_ca"` is
+offered for download at `/ca.crt`. `mynas cert` sets all three.
 
 ## Security notes
 
 mynas is meant for a trusted home network. Traffic is unencrypted plain HTTP
-unless you configure TLS. Don't expose mynas directly to the internet. For
+unless you turn on HTTPS with `mynas cert`. Don't expose mynas directly to the internet. For
 access from outside, use a VPN such as WireGuard or Tailscale.
 
 ## Layout of the code
@@ -201,5 +251,7 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 | `main.go` | command line (`init`, `serve`, `user`, `share`) |
 | `config.go` | config file loading, validation, atomic saving |
 | `server.go` | HTTP: login, JSON API for the UI, zip download, WebDAV |
+| `cert.go` | private CA, server certificates, automatic renewal |
 | `fs.go` | the virtual file system: `/` lists shares, each share is an `os.Root` |
 | `web/index.html` | the whole web UI, embedded into the binary |
+| `Containerfile`, `deploy/` | container image, Quadlet unit, backup script and timer |

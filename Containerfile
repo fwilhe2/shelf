@@ -22,6 +22,6 @@ ENV MYNAS_CONFIG=/config/config.json
 # No VOLUME instruction on purpose: it would silently create anonymous volumes
 # when a mount is forgotten, and files would end up somewhere unexpected.
 # Mount /config and /data explicitly (see deploy/mynas.container).
-EXPOSE 8080
+EXPOSE 8443
 ENTRYPOINT ["/mynas"]
 CMD ["serve"]

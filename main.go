@@ -6,6 +6,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -40,6 +41,8 @@ Usage:
   mynas share add NAME DIR [-ro] [-users a,b]  share a directory (default: all users, read-write)
   mynas share del NAME                       stop sharing (files are kept)
 
+  mynas cert [-hosts a,b] [-new-ca]          turn on HTTPS with a certificate from a private CA
+
 Every command accepts -c FILE (default: $MYNAS_CONFIG or /etc/mynas/config.json).
 Changes to users and shares are picked up by a running server automatically.
 `
@@ -59,6 +62,8 @@ func main() {
 		err = cmdUser(args)
 	case "share":
 		err = cmdShare(args)
+	case "cert":
+		err = cmdCert(args)
 	case "help", "-h", "-help", "--help":
 		fmt.Print(usageText)
 	default:
@@ -220,6 +225,13 @@ func cmdServe(args []string) error {
 	defer stop()
 	go srv.watchConfig(ctx)
 
+	var certs *certStore
+	if cfg.TLSCert != "" {
+		if certs, err = newCertStore(cfg); err != nil {
+			return fmt.Errorf("TLS certificate: %w", err)
+		}
+	}
+
 	hs := &http.Server{
 		Addr:              cfg.Listen,
 		Handler:           srv.Handler(),
@@ -247,8 +259,9 @@ func cmdServe(args []string) error {
 		log.Printf("  %s/        (WebDAV: %s/dav/)", u, u)
 	}
 
-	if cfg.TLSCert != "" {
-		err = hs.ServeTLS(ln, cfg.TLSCert, cfg.TLSKey)
+	if certs != nil {
+		hs.TLSConfig = &tls.Config{GetCertificate: certs.GetCertificate}
+		err = hs.ServeTLS(ln, "", "")
 	} else {
 		err = hs.Serve(ln)
 	}

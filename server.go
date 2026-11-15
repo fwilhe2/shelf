@@ -119,6 +119,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("OPTIONS /{$}", handleRootOptions) // Windows probes the server root
+	mux.HandleFunc("GET /ca.crt", s.handleCACert)
 	mux.HandleFunc("POST /api/login", s.handleLogin)
 	mux.HandleFunc("POST /api/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/me", s.api(s.handleMe))
@@ -304,7 +305,26 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, user string, _ *nasFS) {
-	writeJSON(w, map[string]string{"user": user})
+	writeJSON(w, map[string]any{"user": user, "ca": s.config().TLSCA != ""})
+}
+
+// handleCACert offers the CA certificate, so devices can trust it. It is
+// public by nature and needed before logging in, so no authentication.
+func (s *Server) handleCACert(w http.ResponseWriter, r *http.Request) {
+	p := s.config().TLSCA
+	if p == "" {
+		http.NotFound(w, r)
+		return
+	}
+	data, err := os.ReadFile(p)
+	if err != nil {
+		log.Printf("error: %v", err)
+		http.Error(w, "CA certificate not available", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/x-x509-ca-cert")
+	w.Header().Set("Content-Disposition", `attachment; filename="mynas-ca.crt"`)
+	w.Write(data)
 }
 
 type shareInfo struct {

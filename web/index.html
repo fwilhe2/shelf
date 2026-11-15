@@ -409,9 +409,11 @@ async function remove(e) {
   try { await davReq('DELETE', join(state.path, e.name)); toast('Deleted'); load(); } catch (err) { toast(err.message, true); }
 }
 
-function connect() {
+async function connect() {
   const url = location.origin + '/dav/';
   const host = location.host, secure = location.protocol === 'https:';
+  let ca = false;
+  try { ca = secure && (await (await fetch('/api/me', { headers: HDR })).json()).ca; } catch {}
   dialog({
     title: 'Connect as a network drive', ok: 'Close', cancel: false,
     message: 'Use this address with your username and password:',
@@ -419,7 +421,8 @@ function connect() {
       el('dt', {}, 'Linux (GNOME Files, Dolphin)'), el('dd', {}, `Other Locations → Connect to Server → ${secure ? 'davs' : 'dav'}://${host}/dav/`),
       el('dt', {}, 'macOS Finder'), el('dd', {}, `Go → Connect to Server (⌘K) → ${url}`),
       el('dt', {}, 'Windows Explorer'), el('dd', {}, `This PC → Map network drive → ${url}` + (secure ? '' : ' (plain HTTP needs a registry tweak, see README)')),
-      el('dt', {}, 'Phones & other apps'), el('dd', {}, 'Any WebDAV client works, e.g. rclone, Cyberduck, or a file manager app with WebDAV support.'))],
+      el('dt', {}, 'Phones & other apps'), el('dd', {}, 'Any WebDAV client works, e.g. rclone, Cyberduck, or a file manager app with WebDAV support.'),
+      ca && el('dt', {}, 'Certificate'), ca && el('dd', {}, 'If a device warns about the connection, ', el('a', { href: '/ca.crt' }, 'download the mynas certificate'), ' and install it as trusted on that device (see README).'))],
   });
 }
 
