@@ -1,0 +1,38 @@
+# Podman Quadlet unit for running mynas as a rootless user service.
+# Install: copy to ~/.config/containers/systemd/ and run `systemctl --user daemon-reload`.
+
+[Unit]
+Description=mynas - simple home NAS
+
+[Container]
+ContainerName=mynas
+Image=localhost/mynas:latest
+# `podman auto-update` restarts the service when the local image was rebuilt.
+AutoUpdate=local
+PublishPort=8080:8080
+Timezone=local
+
+# Map the container's user (65532, "nonroot" in distroless) to your own user,
+# so files in the data directory are owned by you on the host and your normal
+# backup tools can read them.
+UserNS=keep-id:uid=65532,gid=65532
+
+# Bind mounts: config and files are plain directories on the host, easy to
+# look at, back up and restore, and the data can live on any disk.
+# :z (shared SELinux label, not :Z) so the label is set once and kept; :Z
+# would relabel the whole data tree on every start, since each new container
+# gets new MCS categories.
+Volume=%h/.config/mynas:/config:z
+Volume=%h/nas-data:/data:z
+
+# Hardening: mynas only writes to /config and /data.
+ReadOnly=true
+ReadOnlyTmpfs=false
+DropCapability=ALL
+NoNewPrivileges=true
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,51 @@
+#!/bin/bash
+# mynas-backup: daily snapshots of the mynas config and data with rsync.
+#
+# Each run creates DEST/YYYY-MM-DDTHHMMSS/ with a full, browsable copy. Files
+# that did not change since the last snapshot are hard links, so a snapshot
+# only costs the space of what changed. To restore, just copy files back.
+#
+# Settings (optional) in ~/.config/mynas/backup.env:
+#   BACKUP_DEST=/run/media/$USER/backupdisk/mynas   # required, must already exist
+#   BACKUP_SOURCES="$HOME/.config/mynas $HOME/nas-data"
+#   BACKUP_KEEP=14                                   # number of snapshots to keep
+set -euo pipefail
+
+conf=${XDG_CONFIG_HOME:-$HOME/.config}/mynas/backup.env
+# shellcheck source=/dev/null
+[[ -r $conf ]] && . "$conf"
+
+dest=${BACKUP_DEST:?set BACKUP_DEST in $conf}
+read -r -a sources <<< "${BACKUP_SOURCES:-$HOME/.config/mynas $HOME/nas-data}"
+keep=${BACKUP_KEEP:-14}
+
+# Never create the destination: if it is missing, the backup disk is probably
+# not mounted, and we must not fill up the mount point on the system disk.
+if [[ ! -d $dest ]]; then
+    echo "backup destination $dest does not exist (disk not mounted?)" >&2
+    exit 1
+fi
+
+for s in "${sources[@]}"; do
+    [[ -d $s ]] || { echo "source $s does not exist" >&2; exit 1; }
+done
+
+stamp=$(date +%Y-%m-%dT%H%M%S)
+tmp=$dest/.incomplete-$stamp
+link=()
+if [[ -L $dest/latest && -d $dest/latest ]]; then
+    link=(--link-dest="$(readlink -f "$dest/latest")")
+fi
+
+rsync -a -H --delete --numeric-ids "${link[@]}" "${sources[@]}" "$tmp/"
+mv "$tmp" "$dest/$stamp"
+ln -sfn "$stamp" "$dest/latest"
+echo "created snapshot $dest/$stamp"
+
+# Remove old snapshots and leftovers of interrupted runs.
+rm -rf "$dest"/.incomplete-*
+mapfile -t snaps < <(find "$dest" -mindepth 1 -maxdepth 1 -type d -name '????-??-??T??????' -printf '%f\n' | sort -r)
+for old in "${snaps[@]:keep}"; do
+    rm -rf "${dest:?}/$old"
+    echo "removed old snapshot $old"
+done

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily backup of mynas
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1h
+# Catch up on the next boot if the machine was off at backup time.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
