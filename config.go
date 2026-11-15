@@ -34,12 +34,15 @@ func (s Share) AllowedFor(user string) bool {
 
 // Config is the whole shelf configuration, stored as a single JSON file.
 type Config struct {
-	Listen  string  `json:"listen"`
-	TLSCert string  `json:"tls_cert,omitempty"`
-	TLSKey  string  `json:"tls_key,omitempty"`
-	TLSCA   string  `json:"tls_ca,omitempty"` // offered for download at /ca.crt
-	Users   []User  `json:"users"`
-	Shares  []Share `json:"shares"`
+	Listen  string `json:"listen"`
+	TLSCert string `json:"tls_cert,omitempty"`
+	TLSKey  string `json:"tls_key,omitempty"`
+	TLSCA   string `json:"tls_ca,omitempty"` // offered for download at /ca.crt
+	// OfficeDir holds grind's web page, to open office documents in the
+	// browser (docs/office.md). Defaults to $SHELF_OFFICE_DIR.
+	OfficeDir string  `json:"office_dir,omitempty"`
+	Users     []User  `json:"users"`
+	Shares    []Share `json:"shares"`
 }
 
 var (
@@ -63,6 +66,9 @@ func (c *Config) Validate() error {
 	}
 	if c.TLSCA != "" && c.TLSCert == "" {
 		return errors.New("tls_ca needs tls_cert and tls_key")
+	}
+	if c.OfficeDir != "" && !filepath.IsAbs(c.OfficeDir) {
+		return fmt.Errorf("office_dir must be absolute, got %q", c.OfficeDir)
 	}
 	users := map[string]bool{}
 	for _, u := range c.Users {

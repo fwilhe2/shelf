@@ -220,6 +220,13 @@ func cmdServe(args []string) error {
 		return err
 	}
 	cfg := srv.config()
+	if d := srv.officeDir(); d != "" {
+		if _, err := os.Stat(filepath.Join(d, "index.html")); err != nil {
+			log.Printf("warning: office documents: %v", err)
+		} else {
+			log.Printf("office documents: serving the page from %s at %s", d, officePrefix)
+		}
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

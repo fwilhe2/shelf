@@ -120,6 +120,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("OPTIONS /{$}", handleRootOptions) // Windows probes the server root
 	mux.HandleFunc("GET /ca.crt", s.handleCACert)
+	mux.HandleFunc("GET "+officePrefix, s.handleOffice)
 	mux.HandleFunc("POST /api/login", s.handleLogin)
 	mux.HandleFunc("POST /api/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/me", s.api(s.handleMe))
@@ -305,7 +306,11 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, user string, _ *nasFS) {
-	writeJSON(w, map[string]any{"user": user, "ca": s.config().TLSCA != ""})
+	var office []string // file extensions the office page opens; none when it is off
+	if s.officeDir() != "" {
+		office = officeExts
+	}
+	writeJSON(w, map[string]any{"user": user, "ca": s.config().TLSCA != "", "office": office})
 }
 
 // handleCACert offers the CA certificate, so devices can trust it. It is

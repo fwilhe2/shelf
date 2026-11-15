@@ -21,7 +21,8 @@ No change to grind.
   Without one, nothing changes.
   - Precompressed `*.gz` siblings are served with `Content-Encoding: gzip` when
     the browser accepts it.
-  - `/office/` requires a login, like the rest of the UI.
+  - `/office/` is public: it is static code without data. Documents come
+    through `/dav`, which requires a login.
 - `/api/me` reports `office: true`; the file list then offers an *Open* action
   for office files: `/office/?doc=../dav/<share>/<path>`.
 - The page is same-origin, so its `fetch` carries shelf's session cookie and
