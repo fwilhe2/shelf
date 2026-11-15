@@ -221,7 +221,11 @@ func cmdServe(args []string) error {
 	}
 	cfg := srv.config()
 	if d := srv.officeDir(); d != "" {
-		if _, err := os.Stat(filepath.Join(d, "index.html")); err != nil {
+		_, err := os.Stat(filepath.Join(d, "index.html"))
+		if errors.Is(err, os.ErrNotExist) {
+			_, err = os.Stat(filepath.Join(d, "index.html.gz")) // the container keeps only that
+		}
+		if err != nil {
 			log.Printf("warning: office documents: %v", err)
 		} else {
 			log.Printf("office documents: serving the page from %s at %s", d, officePrefix)
