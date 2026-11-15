@@ -5,6 +5,9 @@ enterprise features. Runs directly on the host or in a rootless Podman container
 
 - **Web UI**: browse, upload (including drag & drop of whole folders), download,
   download folders as zip, rename, delete, new folder. Works on phones too.
+- **Office documents** (optional): open spreadsheets and text documents
+  (`.ods`, `.odt`, `.xlsx`, `.docx`, …) right in the browser with
+  [grind](https://github.com/fwilhe2/grind). See below.
 - **Network drive**: every share can be mounted via WebDAV in Linux file managers,
   macOS Finder and Windows Explorer.
 - **Users and shares**: a share is a directory on disk. Shares can be read-only
@@ -54,7 +57,8 @@ you own. If share directories are under `/home`, remove `ProtectHome=read-only`.
 
 ## Run in a container (Podman, rootless, e.g. Fedora Silverblue)
 
-The `Containerfile` builds a ~11 MB image: a static binary on
+The `Containerfile` builds a ~21 MB image: a static binary plus
+[grind's web page](#office-documents) (~10 MB) on
 `distroless/static:nonroot`, without a shell or package manager. The container runs
 rootless via a [Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
 unit with a read-only root file system, no capabilities and `no-new-privileges`.
@@ -187,6 +191,22 @@ shelf share list
 A running server picks up changes automatically, so you don't need to restart it.
 Use `sudo` (or `-c FILE` / `SHELF_CONFIG`) when the config is in `/etc/shelf`.
 
+## Office documents
+
+shelf can open office documents in the browser with the web version of
+[grind](https://github.com/fwilhe2/grind), an office suite that runs entirely in
+the browser (WebAssembly). In the file list, the name of an `.ods`, `.odt`,
+`.fods`, `.fodt`, `.xlsx` or `.docx` file then opens it in a new tab.
+
+For now, documents are opened from the share but **not saved back**: you can view
+and edit them, and *Save* downloads the edited copy as ODF. Saving back to the
+share is planned, see [docs/office.md](docs/office.md).
+
+The container image includes grind's page and turns this on. Without the
+container, point shelf to a built grind page (`ui_web/dist` of grind, e.g. from
+`podman create ghcr.io/fwilhe2/grind-web` and `podman cp …:/usr/share/grind/web`)
+with `"office_dir"` in the config or `$SHELF_OFFICE_DIR`. Without either, it is off.
+
 ## Connecting as a network drive
 
 The WebDAV address is `http://<your-nas>:8080/dav/` (with HTTPS:
@@ -236,7 +256,8 @@ raise `FileSizeLimitInBytes` (same registry key, max `0xffffffff`), or use
 
 To change `listen`, edit the file and restart the server. Optional:
 `"tls_cert"` and `"tls_key"` (PEM file paths) turn on HTTPS, and `"tls_ca"` is
-offered for download at `/ca.crt`. `shelf cert` sets all three.
+offered for download at `/ca.crt`. `shelf cert` sets all three. `"office_dir"`
+turns on [office documents](#office-documents).
 
 ## Security notes
 
@@ -251,6 +272,7 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 | `main.go` | command line (`init`, `serve`, `user`, `share`) |
 | `config.go` | config file loading, validation, atomic saving |
 | `server.go` | HTTP: login, JSON API for the UI, zip download, WebDAV |
+| `office.go` | serves grind's web page for office documents under `/office/` |
 | `cert.go` | private CA, server certificates, automatic renewal |
 | `fs.go` | the virtual file system: `/` lists shares, each share is an `os.Root` |
 | `web/index.html` | the whole web UI, embedded into the binary |
