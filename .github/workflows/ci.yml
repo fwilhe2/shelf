@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -d .; exit 1; }
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  e2e:
+    name: End-to-end demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Allow rootless Podman
+        # Ubuntu 24.04 restricts unprivileged user namespaces with AppArmor.
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Tools
+        run: |
+          podman --version
+          for t in jq unzip openssl rsync; do command -v $t >/dev/null || missing="$missing $t"; done
+          [ -z "$missing" ] || { sudo apt-get update && sudo apt-get install -y $missing; }
+      - name: Build the container image
+        run: podman build -t localhost/shelf:latest .
+      - name: Run the end-to-end test
+        run: test/e2e.sh

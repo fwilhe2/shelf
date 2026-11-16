@@ -277,6 +277,17 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 | `fs.go` | the virtual file system: `/` lists shares, each share is an `os.Root` |
 | `web/index.html` | the whole web UI, embedded into the binary |
 | `Containerfile`, `deploy/` | container image, Quadlet unit, backup script and timer |
+| `test/e2e.sh` | end-to-end test and demo of the container (run by CI, see below) |
+
+## Tests
+
+`go test ./...` runs the unit tests. `test/e2e.sh` builds nothing itself: after
+`podman build -t localhost/shelf:latest .` it runs the image like
+`deploy/shelf.container`, sets it up with HTTPS, two users and three shares, uploads,
+downloads, renames and deletes files over the web API and WebDAV, and checks on
+the host that every file was stored correctly, that access rules hold, that
+nothing is lost on a restart and that the backup script works. CI runs both on
+every push; the end-to-end run's report is in the job summary.
 
 ## License
 
