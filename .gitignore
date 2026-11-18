@@ -1,2 +1,7 @@
 /shelf
 /dist/
+
+# browser tests (test/browser)
+node_modules/
+test-results/
+playwright-report/

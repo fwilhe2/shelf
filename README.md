@@ -302,6 +302,7 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 | `web/vendor/` | third-party code the web UI loads (PDF.js), see [THIRD_PARTY.md](THIRD_PARTY.md) |
 | `Containerfile`, `deploy/` | container image, Quadlet unit, backup script and timer |
 | `test/e2e.sh` | end-to-end test and demo of the container (run by CI, see below) |
+| `test/browser/` | browser tests of the web UI in Chromium and Firefox (run by CI) |
 
 ## Tests
 
@@ -310,8 +311,11 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 `deploy/shelf.container`, sets it up with HTTPS, two users and three shares, uploads,
 downloads, renames and deletes files over the web API and WebDAV, and checks on
 the host that every file was stored correctly, that access rules hold, that
-nothing is lost on a restart and that the backup script works. CI runs both on
-every push; the end-to-end run's report is in the job summary.
+nothing is lost on a restart and that the backup script works.
+`test/browser/` drives the web UI in Chromium and Firefox with Playwright: the
+viewer for each kind of file and office documents in grind's page, see
+[its README](test/browser/README.md). CI runs all three on every push; the
+end-to-end run's report is in the job summary.
 
 ## License
 

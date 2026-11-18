@@ -1,0 +1,26 @@
+# Keeps the browser tests on a current Playwright, and with it current
+# Chromium and Firefox builds, plus the Go modules and the CI actions.
+# New releases wait two weeks before they are proposed.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /test/browser
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      playwright:
+        patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
