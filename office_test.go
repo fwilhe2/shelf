@@ -64,6 +64,10 @@ func TestOfficeServesPage(t *testing.T) {
 	if ct := resp.Header.Get("Content-Type"); ct != "text/html; charset=utf-8" {
 		t.Errorf("index Content-Type %q", ct)
 	}
+	// The web UI shows the page in a frame, and nobody else may.
+	if resp.Header.Get("X-Frame-Options") != "SAMEORIGIN" || resp.Header.Get("Content-Security-Policy") != "frame-ancestors 'self'" {
+		t.Errorf("framing: %q %q", resp.Header.Get("X-Frame-Options"), resp.Header.Get("Content-Security-Policy"))
+	}
 
 	// With gzip: the precompressed sibling, with the original's type.
 	resp, body = e.do("GET", "/office/index.html", "", nil, "Accept-Encoding", "br, gzip")

@@ -284,6 +284,18 @@ check "the office page is served at /office/" \
 check "… precompressed for browsers that accept gzip" \
     bash -c "curl -sS -D - -o /dev/null -H 'Accept-Encoding: gzip' --cacert '$cfg/ca.crt' '$base/office/' | grep -qi '^content-encoding: gzip'"
 
+# ---------------------------------------------------------------- viewer
+
+section "Viewing files"
+
+pdfjs=$(sed -n "s/^const PDFJS_VERSION = '\(.*\)';$/\1/p" "$(dirname "$0")/../web/index.html")
+check "PDF.js for the PDF viewer is built into the binary" \
+    bash -c "curl -sS -D - -o /dev/null --cacert '$cfg/ca.crt' '$base/vendor/pdfjs-$pdfjs/legacy/build/pdf.worker.min.mjs' | grep -qi '^content-type: text/javascript'"
+check "… and its licence is served with it" \
+    bash -c "curl -sS --cacert '$cfg/ca.crt' '$base/vendor/pdfjs-$pdfjs/LICENSE' | grep -q 'Apache License'"
+check "only shelf itself may show the office page in a frame" \
+    bash -c "curl -sS -D - -o /dev/null --cacert '$cfg/ca.crt' '$base/office/' | grep -qi '^x-frame-options: sameorigin'"
+
 # ---------------------------------------------------------------- persistence
 
 section "Restarting and backing up"

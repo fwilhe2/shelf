@@ -14,7 +14,8 @@ grind already brings the two pieces needed:
 
 ## Step 1 — view (and edit locally)
 
-No change to grind.
+Needs grind 8bf5f12 or later: shelf relies on the contract in grind's
+`doc/web-shell.md`, "Embedded".
 
 - `shelf serve` serves grind's built `dist/` under `/office/` when an office
   directory is configured (`office_dir` in the config, or `$SHELF_OFFICE_DIR`).
@@ -23,8 +24,16 @@ No change to grind.
     the browser accepts it.
   - `/office/` is public: it is static code without data. Documents come
     through `/dav`, which requires a login.
-- `/api/me` reports `office: true`; the file list then offers an *Open* action
-  for office files: `/office/?doc=../dav/<share>/<path>`.
+- `/api/me` reports `office: true`; office files in the file list open in
+  shelf's viewer, which shows `/office/?doc=../dav/<share>/<path>` in a frame.
+  - The page tells the viewer what happens by `postMessage`: `grind:opened`,
+    `grind:failed {message}` and `grind:dirty {dirty}`. The frame stays behind
+    the viewer's spinner until `grind:opened`; `grind:failed` shows the reason
+    and a Download button instead.
+  - Closing the viewer while the page is dirty asks first; removing a frame
+    would drop the edits without a `beforeunload`.
+  - `/office/` may only be framed by shelf itself (`X-Frame-Options:
+    SAMEORIGIN`, `frame-ancestors 'self'`).
 - The page is same-origin, so its `fetch` carries shelf's session cookie and
   share permissions apply unchanged.
 - Edits stay in the browser; Save downloads a copy.

@@ -119,10 +119,51 @@
            color: var(--bg); padding: 10px 16px; border-radius: 10px; z-index: 30; max-width: 90vw; }
   .toast.err { background: var(--danger); color: #fff; }
 
+  /* the file viewer: a full-window layer over the file list */
+  html.viewing { overflow: hidden; }
+  .viewer { position: fixed; inset: 0; z-index: 25; display: flex; flex-direction: column;
+            background: var(--bg); overscroll-behavior: contain; }
+  .v-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--panel);
+           border-bottom: 1px solid var(--border); padding-top: max(8px, env(safe-area-inset-top)); }
+  .v-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+             font-weight: 600; margin-left: 4px; }
+  .viewer:focus { outline: none; }
+  .v-count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap;
+             padding: 0 4px; }
+  .v-tools { display: contents; }
+  .icon-btn:disabled { opacity: .35; cursor: default; background: none; }
+  .v-body { flex: 1; min-height: 0; position: relative; display: grid; place-items: center; overflow: hidden; }
+  .v-body.image, .v-body.video { background: #000; }
+  .v-body img, .v-body video { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  .v-body img { touch-action: pan-y pinch-zoom; }
+  .v-audio { display: flex; flex-direction: column; align-items: center; gap: 18px; width: min(560px, 90%); }
+  .v-audio svg { width: 64px; height: 64px; color: var(--accent); stroke-width: 1.2; }
+  .v-audio audio { width: 100%; }
+  .v-body iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--panel); }
+  .v-body iframe.opening { visibility: hidden; }
+  .v-text { position: absolute; inset: 0; margin: 0; overflow: auto; padding: 16px 20px; background: var(--panel);
+            font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap;
+            overflow-wrap: anywhere; tab-size: 4; }
+  .v-pdf { position: absolute; inset: 0; overflow: auto; background: var(--bar); outline: 0; }
+  .v-wait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 14px; color: var(--muted); background: var(--bg); }
+  .v-body.image .v-wait, .v-body.video .v-wait { background: #000; }
+  .spinner { width: 30px; height: 30px; border: 3px solid var(--border); border-top-color: var(--accent);
+             border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .v-msg { text-align: center; color: var(--muted); padding: 24px; max-width: 480px; }
+  .v-msg p { margin: 0 0 16px; }
+  .v-body.image .v-msg, .v-body.video .v-msg { color: #c8ced8; }
+
+  .about-list { margin: 8px 0 0; padding: 0; list-style: none; }
+  .about-list li { padding: 8px 0; border-top: 1px solid var(--border); font-size: 14px; }
+  .about-list small { display: block; color: var(--muted); }
+  dialog a { color: var(--accent); }
+
   @media (max-width: 640px) {
     header { padding: 10px 12px; }
     main { padding: 12px; }
-    .who, .hide-sm, .mod { display: none; }
+    .who, .hide-sm, .mod, #v-raw, .v-count { display: none; }
     th, td { padding: 9px 10px; }
   }
 </style>
@@ -147,6 +188,7 @@
     <div class="spacer"></div>
     <span class="who" id="who"></span>
     <button class="btn" id="connect-btn"><span data-icon="link"></span><span class="hide-sm">Connect a drive</span></button>
+    <button class="icon-btn" id="about-btn" title="About shelf"><span data-icon="info"></span></button>
     <button class="icon-btn" id="logout-btn" title="Log out"><span data-icon="logout"></span></button>
   </header>
   <main>
@@ -168,6 +210,19 @@
 <input type="file" id="folder-input" webkitdirectory hidden>
 <div class="drop" id="drop" hidden>Drop files to upload</div>
 <div class="uploads" id="uploads" hidden><h4><span id="up-title">Uploads</span><span class="spacer"></span><button class="icon-btn" id="up-close" title="Close"><span data-icon="x"></span></button></h4><div id="up-list"></div></div>
+<div class="viewer" id="viewer" tabindex="-1" hidden>
+  <div class="v-bar">
+    <button class="icon-btn" id="v-close" title="Close (Esc)"><span data-icon="back"></span></button>
+    <span class="v-title" id="v-title"></span>
+    <span class="v-tools" id="v-tools"></span>
+    <span class="v-count" id="v-count"></span>
+    <button class="icon-btn" id="v-prev" title="Previous (←)"><span data-icon="prev"></span></button>
+    <button class="icon-btn" id="v-next" title="Next (→)"><span data-icon="next"></span></button>
+    <a class="icon-btn" id="v-raw" title="Open the file itself in a new tab" target="_blank" rel="noopener"><span data-icon="external"></span></a>
+    <a class="icon-btn" id="v-download" title="Download"><span data-icon="download"></span></a>
+  </div>
+  <div class="v-body" id="v-body"></div>
+</div>
 <dialog id="dlg"></dialog>
 
 <script>
@@ -186,6 +241,16 @@ const ICONS = {
   logout: '<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  back: '<path d="M19 12H5m0 0 6-6m-6 6 6 6"/>',
+  prev: '<path d="m15 6-6 6 6 6"/>',
+  next: '<path d="m9 6 6 6-6 6"/>',
+  external: '<path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/>',
+  video: '<rect x="3" y="5" width="14" height="14" rx="2"/><path d="m17 10 4-2v8l-4-2"/>',
+  audio: '<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+  zoomIn: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/>',
+  zoomOut: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6"/>',
 };
 function icon(name, cls = '') {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -212,8 +277,16 @@ function el(tag, props = {}, ...kids) {
 const enc = p => p.split('/').map(encodeURIComponent).join('/');
 const dav = p => '/dav' + enc(p);
 const join = (a, b) => (a.endsWith('/') ? a : a + '/') + b;
-const current = () => decodeURIComponent(location.hash.slice(1)) || '/';
-const go = p => { location.hash = enc(p); };
+// The address is #/share/folder, or #/share/folder?view=name while the viewer shows a file.
+function parseHash() {
+  const h = location.hash.slice(1), q = h.indexOf('?');
+  return {
+    path: decodeURIComponent(q < 0 ? h : h.slice(0, q)) || '/',
+    view: q < 0 ? null : new URLSearchParams(h.slice(q + 1)).get('view'),
+  };
+}
+const current = () => parseHash().path;
+const viewHash = (dir, name) => '#' + enc(dir) + '?view=' + encodeURIComponent(name);
 
 function size(n) {
   if (n < 1024) return n + ' B';
@@ -303,7 +376,24 @@ async function whoami(r) {
 }
 // Office documents open in grind's page, which fetches them from WebDAV (docs/office.md).
 const isOffice = name => officeExts.some(x => name.toLowerCase().endsWith(x));
-const office = p => '/office/?doc=..' + dav(p);
+
+// What the viewer can show, by file extension. Anything else is a plain download link.
+const KINDS = {
+  image: 'jpg jpeg jfif png apng gif webp avif svg bmp ico',
+  video: 'mp4 m4v webm mov ogv mkv',
+  audio: 'mp3 m4a aac ogg oga opus wav flac weba',
+  pdf: 'pdf',
+  text: 'txt text md markdown log csv tsv json jsonl xml yaml yml toml ini conf cfg properties env ' +
+        'sh bash zsh fish ps1 bat py rb pl php go rs c h cc cpp hpp java kt swift cs js mjs ts tsx jsx ' +
+        'css scss html htm vue svelte sql diff patch srt vtt nfo gitignore dockerfile containerfile',
+};
+const EXT_KIND = new Map(Object.entries(KINDS).flatMap(([k, exts]) => exts.split(' ').map(x => [x, k])));
+function kindOf(name) {
+  if (isOffice(name)) return 'office';
+  const n = name.toLowerCase();
+  return EXT_KIND.get(n.slice(n.lastIndexOf('.') + 1)) || null;
+}
+const KIND_ICON = { image: 'image', video: 'video', audio: 'audio', pdf: 'doc', text: 'doc', office: 'doc' };
 
 function showLogin() {
   $('app').hidden = true;
@@ -311,8 +401,7 @@ function showLogin() {
   $('u').focus();
 }
 
-async function load() {
-  const p = current();
+async function load(p = current()) {
   try {
     if (p === '/') {
       const shares = await (await api('/api/shares')).json();
@@ -325,8 +414,10 @@ async function load() {
     }
     $('login').hidden = true;
     $('app').hidden = false;
+    return true;
   } catch (e) {
     if (e.message !== 'Please log in') toast(e.message, true);
+    return false;
   }
 }
 
@@ -371,10 +462,11 @@ function renderList() {
   }
   const rows = state.entries.map(e => {
     const p = join(state.path, e.name);
+    const kind = !e.dir && kindOf(e.name);
     const link = e.dir
       ? el('a', { href: '#' + enc(p) }, icon('folder', 'dir'), el('span', {}, e.name))
-      : isOffice(e.name)
-        ? el('a', { href: office(p), target: '_blank', rel: 'noopener', title: 'Open in the browser' }, icon('doc', 'file'), el('span', {}, e.name))
+      : kind
+        ? el('a', { href: viewHash(state.path, e.name), onclick: ev => openViewer(ev, e.name) }, icon(KIND_ICON[kind], 'file'), el('span', {}, e.name))
         : el('a', { href: dav(p), target: '_blank', rel: 'noopener' }, icon('file', 'file'), el('span', {}, e.name));
     return el('tr', {},
       el('td', { class: 'name' }, link),
@@ -438,6 +530,250 @@ async function connect() {
       ca && el('dt', {}, 'Certificate'), ca && el('dd', {}, 'If a device warns about the connection, ', el('a', { href: '/ca.crt' }, 'download the shelf certificate'), ' and install it as trusted on that device (see README).'))],
   });
 }
+
+async function about() {
+  const lic = (name, href) => el('a', { href, target: '_blank', rel: 'noopener' }, name);
+  const P = PDFJS;
+  dialog({
+    title: 'About shelf', ok: 'Close', cancel: false,
+    body: [
+      el('p', {}, 'shelf is free software under the ', lic('GNU Affero General Public License v3.0 or later', 'https://www.gnu.org/licenses/agpl-3.0.html'),
+        '. Source code: ', lic('github.com/fwilhe2/shelf', 'https://github.com/fwilhe2/shelf'), '.'),
+      el('p', {}, 'It includes these components by others:'),
+      el('ul', { class: 'about-list' },
+        el('li', {}, 'Go and golang.org/x/crypto, net, sys, term', el('small', {}, 'The Go Authors · ', lic('BSD-3-Clause', '/licenses/go.txt'))),
+        el('li', {}, 'PDF.js ' + PDFJS_VERSION, el('small', {}, 'Mozilla Foundation · ', lic('Apache-2.0', P + 'LICENSE'))),
+        el('li', {}, 'OpenJPEG (in PDF.js)', el('small', {}, 'Université catholique de Louvain and others · ', lic('BSD-2-Clause', P + 'wasm/LICENSE_OPENJPEG'), '; its PDF.js build: Mozilla Foundation · ', lic('BSD-2-Clause', P + 'wasm/LICENSE_PDFJS_OPENJPEG'))),
+        el('li', {}, 'JBIG2 decoder (in PDF.js)', el('small', {}, 'The PDFium Authors · ', lic('BSD-3-Clause', P + 'wasm/LICENSE_JBIG2'), '; its PDF.js build: Mozilla Foundation · ', lic('Apache-2.0', P + 'wasm/LICENSE_PDFJS_JBIG2'))),
+        el('li', {}, 'qcms (in PDF.js)', el('small', {}, 'Mozilla Corporation, Marti Maria · ', lic('MIT', P + 'wasm/LICENSE_QCMS'), '; its PDF.js build: ', lic('MIT', P + 'wasm/LICENSE_PDFJS_QCMS'))),
+        el('li', {}, 'Foxit standard fonts (in PDF.js)', el('small', {}, 'The PDFium Authors · ', lic('BSD-3-Clause', P + 'standard_fonts/LICENSE_FOXIT'))),
+        el('li', {}, 'Adobe CMaps (in PDF.js)', el('small', {}, 'Adobe Systems Incorporated · ', lic('BSD-3-Clause', P + 'cmaps/LICENSE'))),
+        el('li', {}, 'CGATS001Compat ICC profile (in PDF.js)', el('small', {}, lic('CC0-1.0', P + 'iccs/LICENSE'))),
+        officeExts.length && el('li', {}, 'grind (office documents)', el('small', {}, 'Florian Wilhelm · ', lic('AGPL-3.0-or-later', 'https://github.com/fwilhe2/grind'), ' · its own components are listed in its command palette, About this build'))),
+    ],
+  });
+}
+
+// ---------- viewer
+// Files open in a full-window layer over the list. Its address is #folder?view=name, so the
+// browser's Back button closes it and a link to it can be opened in a new tab.
+const PDFJS_VERSION = '6.5.438';
+const PDFJS = `/vendor/pdfjs-${PDFJS_VERSION}/`;
+const viewer = { name: null, token: null, cleanup: null, guard: null };
+const viewables = () => state.entries.filter(e => !e.dir && kindOf(e.name));
+
+function openViewer(ev, name) {
+  if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return; // new tab etc.
+  ev.preventDefault();
+  history.pushState({ viewer: true }, '', viewHash(state.path, name));
+  showViewer(name);
+}
+
+// closeViewer goes back to the folder; route() asks first when there are unsaved changes.
+function closeViewer() {
+  if (history.state?.viewer) history.back();
+  else location.hash = enc(state.path);
+}
+
+async function step(d) {
+  const list = viewables(), i = list.findIndex(e => e.name === viewer.name);
+  const to = list[i + d];
+  if (!to || !(await leaveOk())) return;
+  history.replaceState(history.state, '', viewHash(state.path, to.name));
+  showViewer(to.name);
+}
+
+async function leaveOk() {
+  return !viewer.guard || await viewer.guard();
+}
+
+function teardown() {
+  try { viewer.cleanup?.(); } catch { }
+  Object.assign(viewer, { name: null, token: null, cleanup: null, guard: null });
+  $('v-body').replaceChildren();
+  $('v-tools').replaceChildren();
+}
+
+function hideViewer() {
+  if ($('viewer').hidden) return;
+  teardown();
+  $('viewer').hidden = true;
+  document.documentElement.classList.remove('viewing');
+}
+
+function showViewer(name) {
+  if (viewer.name === name && !$('viewer').hidden) return;
+  const e = state.entries.find(x => !x.dir && x.name === name);
+  const kind = e && kindOf(e.name);
+  if (!kind) {
+    hideViewer();
+    toast(e ? `“${name}” can't be shown here` : `“${name}” is not in this folder`, true);
+    history.replaceState(null, '', '#' + enc(state.path));
+    return;
+  }
+  teardown();
+  const token = {};
+  Object.assign(viewer, { name, token });
+  const p = join(state.path, name), list = viewables(), i = list.indexOf(e);
+  $('v-title').textContent = $('v-title').title = name;
+  $('v-count').textContent = list.length > 1 ? `${i + 1} / ${list.length}` : '';
+  for (const [id, off] of [['v-prev', i <= 0], ['v-next', i >= list.length - 1]]) {
+    $(id).disabled = off;
+    $(id).hidden = list.length < 2;
+  }
+  $('v-download').href = $('v-raw').href = dav(p);
+  $('v-download').download = name;
+  $('v-raw').hidden = kind === 'office' || kind === 'text';
+  const body = $('v-body');
+  body.className = 'v-body ' + kind;
+  $('viewer').hidden = false;
+  document.documentElement.classList.add('viewing');
+  $('viewer').focus();
+  VIEW[kind](body, p, e, () => viewer.token === token);
+  // Fetch the neighbouring pictures now, so flipping through a folder doesn't wait.
+  for (const n of [list[i - 1], list[i + 1]]) if (n && kindOf(n.name) === 'image') new Image().src = dav(join(state.path, n.name));
+}
+
+const waiting = text => el('div', { class: 'v-wait' }, el('div', { class: 'spinner' }), text);
+function failed(body, msg, p) {
+  body.replaceChildren(el('div', { class: 'v-msg' }, el('p', {}, msg),
+    el('a', { class: 'btn', href: dav(p), download: p.slice(p.lastIndexOf('/') + 1) }, icon('download'), 'Download')));
+}
+const toolBtn = (name, title, onclick) => el('button', { class: 'icon-btn', title, onclick }, icon(name));
+
+const VIEW = {
+  image(body, p) {
+    const img = el('img', { src: dav(p), alt: '' });
+    img.onerror = () => failed(body, "This picture can't be shown in the browser.", p);
+    body.append(img);
+    // Swipe left and right on a phone, like in a photo app.
+    let x0 = null;
+    img.addEventListener('touchstart', e => { x0 = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
+    img.addEventListener('touchend', e => {
+      if (x0 == null || visualViewport?.scale > 1.01) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 60) step(dx < 0 ? 1 : -1);
+    });
+  },
+
+  video(body, p) {
+    const v = el('video', { src: dav(p), controls: true, autoplay: true, playsinline: true, preload: 'metadata' });
+    v.onerror = () => failed(body, "This browser can't play this video. Download it to play it with a video player.", p);
+    body.append(v);
+  },
+
+  audio(body, p, e) {
+    const a = el('audio', { src: dav(p), controls: true, autoplay: true, preload: 'metadata' });
+    a.onerror = () => failed(body, "This browser can't play this file.", p);
+    body.append(el('div', { class: 'v-audio' }, icon('audio'), el('div', {}, e.name), a));
+  },
+
+  async text(body, p, e, live) {
+    if (e.size > 5 << 20) return failed(body, 'This file is too large to show here.', p);
+    body.append(waiting('Loading…'));
+    try {
+      const text = await (await davReq('GET', p)).text();
+      if (live()) body.replaceChildren(el('pre', { class: 'v-text', tabindex: '0' }, text));
+    } catch (err) { if (live()) failed(body, err.message, p); }
+  },
+
+  async pdf(body, p, e, live) {
+    const wait = waiting('Opening…');
+    body.append(wait);
+    let task;
+    viewer.cleanup = () => task?.destroy();
+    try {
+      const { lib, ui } = await pdfjs();
+      if (!live()) return;
+      // PDFViewer wants its container in the page, absolutely positioned, before it starts.
+      const container = el('div', { class: 'v-pdf', tabindex: '0' }, el('div', { class: 'pdfViewer' }));
+      body.prepend(container);
+      const eventBus = new ui.EventBus();
+      const links = new ui.PDFLinkService({ eventBus, externalLinkTarget: ui.LinkTarget.BLANK, externalLinkRel: 'noopener noreferrer nofollow' });
+      const pv = new ui.PDFViewer({ container, eventBus, linkService: links });
+      links.setViewer(pv);
+      task = lib.getDocument({
+        url: new URL(dav(p), location.href).href, httpHeaders: HDR,
+        cMapUrl: PDFJS + 'cmaps/', cMapPacked: true, standardFontDataUrl: PDFJS + 'standard_fonts/',
+        wasmUrl: PDFJS + 'wasm/', iccUrl: PDFJS + 'iccs/',
+      });
+      const doc = await task.promise;
+      if (!live()) return;
+      const page = el('span', { class: 'v-count' });
+      const showPage = () => { page.textContent = `p. ${pv.currentPageNumber} of ${doc.numPages}`; };
+      eventBus.on('pagesinit', () => {
+        pv.currentScaleValue = innerWidth < 700 ? 'page-width' : 'auto';
+        showPage();
+        wait.remove();
+        container.focus();
+      });
+      eventBus.on('pagechanging', showPage);
+      pv.setDocument(doc);
+      links.setDocument(doc);
+      $('v-tools').replaceChildren(page,
+        toolBtn('zoomOut', 'Zoom out', () => pv.decreaseScale()),
+        toolBtn('zoomIn', 'Zoom in', () => pv.increaseScale()));
+    } catch (err) {
+      if (!live()) return;
+      failed(body, err?.name === 'PasswordException' ? 'This PDF is protected with a password.' : `This PDF can't be shown: ${err?.message || err}`, p);
+    }
+  },
+
+  // grind's page (docs/office.md) tells its parent what happens by postMessage: grind:opened,
+  // grind:failed, and grind:dirty whenever unsaved edits come or go. The frame stays behind
+  // the spinner until the document is open, so it appears in one piece.
+  office(body, p, e) {
+    const frame = el('iframe', { class: 'opening', src: '/office/?doc=..' + dav(p), title: e.name });
+    const wait = waiting('Opening…');
+    body.append(frame, wait);
+    let dirty = false;
+    const onMessage = m => {
+      if (m.source !== frame.contentWindow || m.origin !== location.origin) return;
+      switch (m.data?.type) {
+        case 'grind:opened': wait.remove(); frame.classList.remove('opening'); frame.contentWindow.focus(); break;
+        case 'grind:failed': failed(body, m.data.message, p); break;
+        case 'grind:dirty': dirty = !!m.data.dirty; break;
+      }
+    };
+    addEventListener('message', onMessage);
+    viewer.cleanup = () => removeEventListener('message', onMessage);
+    // Edits stay in the page; removing the frame would drop them without a beforeunload.
+    viewer.guard = async () => !dirty || !!await dialog({
+      title: 'Discard your changes?', ok: 'Discard', danger: true,
+      message: `Changes to “${e.name}” are not saved on the share. To keep them, use Save in the document first: it downloads a copy.`,
+    });
+  },
+};
+
+// pdfjs loads PDF.js (web/vendor, Apache-2.0) the first time a PDF is opened.
+let pdfjsLoading;
+function pdfjs() {
+  return pdfjsLoading ??= (async () => {
+    const css = el('link', { rel: 'stylesheet', href: PDFJS + 'legacy/web/pdf_viewer.css' });
+    const cssLoaded = new Promise(res => { css.onload = css.onerror = res; });
+    document.head.append(css);
+    const lib = await import(PDFJS + 'legacy/build/pdf.min.mjs');
+    lib.GlobalWorkerOptions.workerSrc = PDFJS + 'legacy/build/pdf.worker.min.mjs';
+    globalThis.pdfjsLib = lib; // pdf_viewer.mjs takes the library from here
+    const ui = await import(PDFJS + 'legacy/web/pdf_viewer.mjs');
+    await cssLoaded;
+    return { lib, ui };
+  })().catch(err => { pdfjsLoading = null; throw err; });
+}
+
+// route shows what the address names: a folder, and maybe a file over it.
+async function route() {
+  const { path, view } = parseHash();
+  if (viewer.name && (view !== viewer.name || path !== state.path) && !(await leaveOk())) {
+    history.pushState({ viewer: true }, '', viewHash(state.path, viewer.name));
+    return;
+  }
+  if (!view) hideViewer();
+  if ((path !== state.path || !view || !listed) && !(await load(path))) return hideViewer();
+  listed = true;
+  if (view) showViewer(view);
+}
+let listed = false;
 
 // ---------- uploads
 async function upload(items) {
@@ -524,11 +860,22 @@ $('login-form').addEventListener('submit', async e => {
     if (!r.ok) throw new Error((await r.json()).error);
     await whoami(await fetch('/api/me', { headers: HDR }));
     $('p').value = '';
-    load();
+    route();
   } catch (err) { $('login-error').textContent = err.message || 'Login failed'; }
 });
 $('logout-btn').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); showLogin(); };
 $('connect-btn').onclick = connect;
+$('about-btn').onclick = about;
+$('v-close').onclick = closeViewer;
+$('v-prev').onclick = () => step(-1);
+$('v-next').onclick = () => step(1);
+document.addEventListener('keydown', e => {
+  if ($('viewer').hidden || $('dlg').open || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeViewer(); return; }
+  // Arrows flip through pictures and videos; in a PDF or a text they scroll.
+  const flips = ['image', 'video', 'audio'].includes(kindOf(viewer.name || '')) && !(e.target instanceof HTMLMediaElement);
+  if (flips && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1); }
+});
 $('mkdir-btn').onclick = mkdir;
 $('zip-btn').onclick = () => { location.href = '/api/zip?path=' + encodeURIComponent(state.path); };
 $('upload-btn').onclick = () => $('file-input').click();
@@ -543,7 +890,7 @@ for (const id of ['file-input', 'folder-input']) {
 }
 
 let dragDepth = 0;
-const canDrop = e => !state.readOnly && state.path !== '/' && e.dataTransfer?.types.includes('Files');
+const canDrop = e => $('viewer').hidden && !state.readOnly && state.path !== '/' && e.dataTransfer?.types.includes('Files');
 window.addEventListener('dragenter', e => { if (canDrop(e)) { e.preventDefault(); dragDepth++; $('drop').hidden = false; } });
 window.addEventListener('dragover', e => { if (canDrop(e)) e.preventDefault(); });
 window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('drop').hidden = true; } });
@@ -555,13 +902,13 @@ window.addEventListener('drop', async e => {
   upload(await itemsFromDrop(e.dataTransfer));
 });
 
-window.addEventListener('hashchange', load);
+window.addEventListener('hashchange', route);
 (async () => {
   try {
     const r = await fetch('/api/me', { headers: HDR });
     if (!r.ok) return showLogin();
     await whoami(r);
-    load();
+    route();
   } catch { showLogin(); }
 })();
 </script>

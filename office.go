@@ -61,6 +61,9 @@ func (s *Server) handleOffice(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache") // grind's file names carry no hash
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Vary", "Accept-Encoding")
+	// The web UI shows the page in a frame; nobody else may.
+	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+	w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
 	ctype := mime.TypeByExtension(path.Ext(name))
 	if ctype == "" {
 		ctype = "application/octet-stream"

@@ -5,6 +5,9 @@ enterprise features. Runs directly on the host or in a rootless Podman container
 
 - **Web UI**: browse, upload (including drag & drop of whole folders), download,
   download folders as zip, rename, delete, new folder. Works on phones too.
+- **Viewer**: photos, videos, music, PDFs and text files open right in the
+  browser, on phones too. Flip through a folder with the arrow keys or by
+  swiping. PDFs are shown with a built-in copy of [PDF.js](https://mozilla.github.io/pdf.js/).
 - **Office documents** (optional): open spreadsheets and text documents
   (`.ods`, `.odt`, `.xlsx`, `.docx`, …) right in the browser with
   [grind](https://github.com/fwilhe2/grind). See below.
@@ -57,7 +60,7 @@ you own. If share directories are under `/home`, remove `ProtectHome=read-only`.
 
 ## Run in a container (Podman, rootless, e.g. Fedora Silverblue)
 
-The `Containerfile` builds a ~21 MB image: a static binary plus
+The `Containerfile` builds a ~26 MB image: a static binary (with PDF.js built in) plus
 [grind's web page](#office-documents) (~10 MB) on
 `distroless/static:nonroot`, without a shell or package manager. The container runs
 rootless via a [Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
@@ -196,16 +199,35 @@ Use `sudo` (or `-c FILE` / `SHELF_CONFIG`) when the config is in `/etc/shelf`.
 shelf can open office documents in the browser with the web version of
 [grind](https://github.com/fwilhe2/grind), an office suite that runs entirely in
 the browser (WebAssembly). In the file list, the name of an `.ods`, `.odt`,
-`.fods`, `.fodt`, `.xlsx` or `.docx` file then opens it in a new tab.
+`.fods`, `.fodt`, `.xlsx` or `.docx` file then opens it in shelf's viewer.
 
 For now, documents are opened from the share but **not saved back**: you can view
 and edit them, and *Save* downloads the edited copy as ODF. Saving back to the
 share is planned, see [docs/office.md](docs/office.md).
 
 The container image includes grind's page and turns this on. Without the
-container, point shelf to a built grind page (`ui_web/dist` of grind, e.g. from
+container, point shelf to a built grind page (`ui_web/dist` of grind 8bf5f12 or later, e.g. from
 `podman create ghcr.io/fwilhe2/grind-web` and `podman cp …:/usr/share/grind/web`)
 with `"office_dir"` in the config or `$SHELF_OFFICE_DIR`. Without either, it is off.
+
+## Viewing files
+
+Clicking a file's name opens it in a viewer over the file list, if the browser
+can show it:
+
+| Kind | Files |
+|---|---|
+| Pictures | `.jpg`, `.png`, `.gif`, `.webp`, `.avif`, `.svg`, … |
+| Videos | `.mp4`, `.webm`, `.mov`, `.mkv`, … (whatever the browser can play: `.mkv` and `.mov` often only partly) |
+| Music | `.mp3`, `.m4a`, `.ogg`, `.opus`, `.flac`, `.wav`, … |
+| PDFs | `.pdf`, with PDF.js, so it works the same on every browser and on phones |
+| Text | `.txt`, `.md`, `.csv`, `.json`, `.log`, source code, … (up to 5 MB) |
+| Office documents | with grind, see [above](#office-documents) |
+
+Other files open or download as before. ← and → (or swiping on a phone) go to
+the previous or next file in the folder, Esc or the browser's Back button
+closes the viewer. The address of a viewed file can be bookmarked or opened in
+a new tab (middle click).
 
 ## Connecting as a network drive
 
@@ -273,9 +295,11 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 | `config.go` | config file loading, validation, atomic saving |
 | `server.go` | HTTP: login, JSON API for the UI, zip download, WebDAV |
 | `office.go` | serves grind's web page for office documents under `/office/` |
+| `static.go` | serves the vendored third-party files (`web/vendor/`) and licence texts (`web/licenses/`) |
 | `cert.go` | private CA, server certificates, automatic renewal |
 | `fs.go` | the virtual file system: `/` lists shares, each share is an `os.Root` |
-| `web/index.html` | the whole web UI, embedded into the binary |
+| `web/index.html` | the whole web UI, including the viewer, embedded into the binary |
+| `web/vendor/` | third-party code the web UI loads (PDF.js), see [THIRD_PARTY.md](THIRD_PARTY.md) |
 | `Containerfile`, `deploy/` | container image, Quadlet unit, backup script and timer |
 | `test/e2e.sh` | end-to-end test and demo of the container (run by CI, see below) |
 
@@ -292,4 +316,6 @@ every push; the end-to-end run's report is in the job summary.
 ## License
 
 shelf is licensed under the GNU Affero General Public License v3.0 or later, see
-[LICENSE](LICENSE).
+[LICENSE](LICENSE). It includes components by others under their own
+(permissive) licences, listed in [THIRD_PARTY.md](THIRD_PARTY.md) and in the web
+UI's *About* dialog.

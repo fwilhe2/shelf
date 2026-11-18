@@ -121,6 +121,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("OPTIONS /{$}", handleRootOptions) // Windows probes the server root
 	mux.HandleFunc("GET /ca.crt", s.handleCACert)
 	mux.HandleFunc("GET "+officePrefix, s.handleOffice)
+	mux.HandleFunc("GET /vendor/", handleStatic)
+	mux.HandleFunc("GET /licenses/", handleStatic)
 	mux.HandleFunc("POST /api/login", s.handleLogin)
 	mux.HandleFunc("POST /api/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/me", s.api(s.handleMe))
