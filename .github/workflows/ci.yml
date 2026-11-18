@@ -65,6 +65,13 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium firefox
+      - name: An audio server
+        # Firefox can't play any audio without one (MEDIA_ERR_DECODE); with no
+        # sound card, PulseAudio gives it a silent sink.
+        run: |
+          sudo apt-get install -y --no-install-recommends pulseaudio
+          pulseaudio --daemonize --exit-idle-time=-1
+          pactl info | grep -i '^default sink'
       - name: Run the browser tests
         working-directory: test/browser
         run: npx playwright test

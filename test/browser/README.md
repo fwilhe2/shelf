@@ -17,6 +17,10 @@ npx playwright test --headed --debug        # watch it
 files with `fixtures.js` into a temporary share and serves it on
 `127.0.0.1:18090` (`PORT=` to change it), user `alice`, password `pw`.
 
+Firefox plays audio only with an audio server (PipeWire or PulseAudio)
+running; without one, "music plays" fails with `MEDIA_ERR_DECODE`. CI starts
+PulseAudio, which gives it a silent sink.
+
 `GRIND_WEB` is grind's built web page. Without it, the office tests are
 skipped; in CI it is copied from `ghcr.io/fwilhe2/grind-web`, like the
 container image does, and required.
