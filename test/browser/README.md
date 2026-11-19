@@ -28,3 +28,6 @@ container image does, and required.
 
 Dependabot proposes new Playwright releases (two weeks after they come out),
 which bring new Chromium and Firefox builds along.
+
+`screenshots.js` takes the README's screenshots (`docs/screenshots/`) of a
+running `test/demo.sh`: `node screenshots.js [http://localhost:18080]`.

@@ -1,25 +1,67 @@
 # shelf
 
-A simple NAS for your home network. One binary, one config file, no database, no
-enterprise features. Runs directly on the host or in a rootless Podman container.
+**A NAS for your home that you can set up in minutes and understand
+completely.** One small program, one config file, your files as plain files
+in plain folders, and a web UI the whole family can use, on phones too.
+
+![Searching for a customer number finds it in a PDF, in a photo of the
+invoice taken with a phone, and in a scanned letter](docs/screenshots/search.png)
+
+## What makes shelf different
+
+- **Your files stay plain files.** A share is just a directory. No database,
+  no import, no hidden metadata: stop shelf, and everything is still there,
+  for any backup tool, file manager or the next program you choose.
+- **Find a file by what is in it.** Full-text search reads PDFs, office
+  documents and text files, and with OCR, scans and photos of paper: the
+  invoice you photographed is found by its customer number
+  ([clerk](https://github.com/fwilhe2/clerk), optional).
+- **Open everything right in the browser.** Photos, videos, music, PDFs and
+  text, and spreadsheets and documents with
+  [grind](https://github.com/fwilhe2/grind), an office suite that runs in the
+  browser. Nothing to install, on any device.
+- **A network drive without an app.** Every share mounts as a drive in
+  Windows Explorer, macOS Finder and Linux file managers (WebDAV).
+- **Safe by default.** Nobody gets out of a share, not through `..` and not
+  through symlinks; passwords are bcrypt hashes; HTTPS with a private CA in one
+  command; the container runs rootless and distroless, with no shell.
+- **Nothing leaves your home.** No cloud account, no telemetry; search and OCR
+  run on the NAS itself.
+- **Small enough to read.** A few thousand lines of Go and one HTML file.
+
+Try it in one command, with demo files, in memory only:
+`test/demo.sh`, then open <http://localhost:18080/> (user `demo`, password
+`demo`). See [Search](#search).
+
+| | |
+|---|---|
+| ![A folder of scans: PDFs, a TIFF and a JPEG](docs/screenshots/folder.png) | ![The Apollo 11 plaque, a NASA photo, in the viewer](docs/screenshots/viewer-photo.png) |
+| Browse, upload whole folders, download folders as zip, rename, delete. | Photos, videos and music in a viewer; flip through a folder with the arrow keys or by swiping. |
+| ![The Grundgesetz as a PDF, shown by PDF.js](docs/screenshots/viewer-pdf.png) | ![The Gettysburg Address as a .docx, open in grind](docs/screenshots/viewer-office.png) |
+| PDFs with a built-in [PDF.js](https://mozilla.github.io/pdf.js/). | Office documents (`.ods`, `.odt`, `.xlsx`, `.docx`, …) in grind. |
+
+<img src="docs/screenshots/phone-search.png" width="260" align="right"
+alt="Search on a phone: a photo of the Apollo 11 plaque, found by the words on it">
+
+## What it does
 
 - **Web UI**: browse, upload (including drag & drop of whole folders), download,
   download folders as zip, rename, delete, new folder. Works on phones too.
 - **Viewer**: photos, videos, music, PDFs and text files open right in the
-  browser, on phones too. Flip through a folder with the arrow keys or by
-  swiping. PDFs are shown with a built-in copy of [PDF.js](https://mozilla.github.io/pdf.js/).
+  browser. Flip through a folder with the arrow keys or by swiping.
 - **Office documents** (optional): open spreadsheets and text documents
-  (`.ods`, `.odt`, `.xlsx`, `.docx`, …) right in the browser with
-  [grind](https://github.com/fwilhe2/grind). See below.
-- **Full-text search** (optional): find files by the words in them, in PDFs,
-  office documents, and with OCR in scans and photos, with
-  [clerk](https://github.com/fwilhe2/clerk). See below.
-- **Network drive**: every share can be mounted via WebDAV in Linux file managers,
-  macOS Finder and Windows Explorer.
-- **Users and shares**: a share is a directory on disk. Shares can be read-only
-  and limited to some users.
-- **Safe by default**: users can't leave a share's directory, not through `..`
-  and not through symlinks. Passwords are stored as bcrypt hashes.
+  in the browser with grind. See [below](#office-documents).
+- **Full-text search** (optional): find files by the words in their name or
+  text, with OCR for scans and photos. See [below](#search).
+- **Network drive**: every share can be mounted via WebDAV.
+- **Users and shares**: shares can be read-only and limited to some users.
+- **Runs anywhere Linux does**: directly on the host (also a Raspberry Pi) or
+  in a rootless Podman container.
+
+The screenshots show only the demo files of `test/demo-data.sh` (public domain
+or made by the script); `test/browser/screenshots.js` takes them again.
+
+<br clear="right">
 
 ## Build
 
