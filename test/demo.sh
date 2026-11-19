@@ -8,8 +8,9 @@
 # The share and the config (with the search index) are in a directory in
 # $XDG_RUNTIME_DIR (or /dev/shm), which is memory (tmpfs), and removed on exit.
 # The demo files are made once and kept in ~/.cache/shelf-demo-data (or
-# DEMO_DATA=DIR). Settings: PORT (default 18080), IMAGE (default
-# localhost/shelf:search, built when missing; BUILD=1 builds it again).
+# DEMO_DATA=DIR). The image is built from this working tree each time, as
+# localhost/shelf:search (the first build takes minutes, later ones seconds),
+# unless IMAGE names one to use as it is. PORT: default 18080.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -26,8 +27,10 @@ if [[ ! -f $demo/SOURCES.md ]]; then
 	"$repo/test/demo-data.sh" "$demo.tmp"
 	mv "$demo.tmp" "$demo"
 fi
-if [[ -n ${BUILD:-} ]] || ! podman image exists "$image"; then
-	podman build --target search -t "$image" "$repo"
+# Always from the working tree; the layer cache makes this quick when little changed.
+if [[ -z ${IMAGE:-} ]]; then
+	echo "Building $image from $repo …"
+	log=$(podman build --target search -t "$image" "$repo" 2>&1) || { echo "$log" >&2; exit 1; }
 fi
 
 work=$(mktemp -d "$mem/shelf-demo.XXXXXX")
