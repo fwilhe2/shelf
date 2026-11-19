@@ -222,6 +222,11 @@ the shares you may access. `shelf index` reads the shares into the index; run
 it by hand or from a timer. Details, and the container image with search (distroless too, ~120 MB), in
 [docs/search.md](docs/search.md).
 
+To try it out, `test/demo.sh` starts a throwaway container with search and a
+share of demo files (PDFs with and without text, scans, photos with text,
+office documents; all public domain or made by `test/demo-data.sh`), kept in
+memory only: open <http://localhost:18080/>, user `demo`, password `demo`.
+
 ## Viewing files
 
 Clicking a file's name opens it in a viewer over the file list, if the browser
@@ -318,6 +323,7 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 | `deploy/third-party.sh` | collects the search image's Debian packages and clerk's crates with their licences, and checks them against THIRD_PARTY.md |
 | `test/e2e.sh` | end-to-end test and demo of the container (run by CI, see below) |
 | `test/browser/` | browser tests of the web UI in Chromium and Firefox (run by CI) |
+| `test/demo.sh`, `test/demo-data.sh` | a throwaway container with search and demo files |
 
 ## Tests
 

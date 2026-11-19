@@ -70,3 +70,7 @@ their licences while the image is built, and fails the build when they differ
 from [THIRD_PARTY.md](../THIRD_PARTY.md). clerk is built from the commit
 `CLERK_REV` names in the `Containerfile`; raising it may need THIRD_PARTY.md
 updated.
+
+`test/demo.sh` runs it with the files of `test/demo-data.sh` (public domain or
+made by the script; their `SOURCES.md` says which) in a share in a directory
+in `$XDG_RUNTIME_DIR`, which is memory, removed when it stops.
