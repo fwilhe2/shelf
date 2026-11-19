@@ -51,3 +51,22 @@ Every result must be in a share the user may access, and is opened through
 that share like any other file, so a symlink in a share does not lead out of
 it and a deleted file is not shown. One index holds all shares; the shares are
 the boundary.
+
+## The container
+
+The default image stays as small as it is and has no search. The `search`
+target is distroless too (`cc-debian13`, with glibc; no shell, no package
+manager), about 120 MB instead of 32 MB: shelf, clerk, tesseract (English and
+German) and poppler's `pdftoppm`, with only the Debian packages these load.
+The index is at `/config/search/index.sqlite`:
+
+```sh
+podman build --target search -t localhost/shelf:search .
+podman exec shelf /shelf index          # in the running container
+```
+
+`deploy/third-party.sh` collects the Debian packages and clerk's crates with
+their licences while the image is built, and fails the build when they differ
+from [THIRD_PARTY.md](../THIRD_PARTY.md). clerk is built from the commit
+`CLERK_REV` names in the `Containerfile`; raising it may need THIRD_PARTY.md
+updated.

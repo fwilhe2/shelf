@@ -28,6 +28,58 @@ COPY web/ web/
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath -ldflags='-s -w -buildid=' -o /shelf .
 
+# ---- The image with search (docs/search.md), distroless too:
+#
+#   podman build --target search -t localhost/shelf:search .
+#
+# shelf, clerk, and tesseract and poppler's pdftoppm for clerk to read scans and
+# photos, with only the Debian packages they load. deploy/third-party.sh
+# collects them and their licences, and fails the build when they differ from
+# THIRD_PARTY.md.
+
+# clerk, at a fixed commit, so its crates (and their licences) change only here.
+FROM docker.io/library/rust:1-slim-trixie AS clerk
+ARG CLERK_REV=5ec47eec0739d68fae22954513377a7e705f5dc3
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+RUN git init -q /src && cd /src && git fetch -q --depth 1 https://github.com/fwilhe2/clerk "$CLERK_REV" \
+ && git checkout -q FETCH_HEAD
+WORKDIR /src
+RUN cargo build --release --locked -p clerk-cli \
+ && install -D target/release/clerk /out/usr/local/bin/clerk
+COPY THIRD_PARTY.md deploy/third-party.sh /tmp/
+RUN /tmp/third-party.sh crates /out /tmp/THIRD_PARTY.md
+
+FROM gcr.io/distroless/cc-debian13:nonroot AS cc
+
+# tesseract (English and German) and pdftoppm, from the same Debian release as
+# the distroless base, so they run on its glibc.
+FROM docker.io/library/debian:trixie-slim AS ocr
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu poppler-utils fontconfig-config fonts-dejavu-core
+COPY --from=cc /var/lib/dpkg/status.d /tmp/base-status.d
+COPY THIRD_PARTY.md deploy/third-party.sh /tmp/
+RUN /tmp/third-party.sh debs /out /tmp/base-status.d /tmp/THIRD_PARTY.md /usr/bin/tesseract /usr/bin/pdftoppm \
+    -- tesseract-ocr-eng tesseract-ocr-deu fontconfig-config fonts-dejavu-core
+
+# cc-debian13: distroless with glibc and libstdc++, no shell, no package manager.
+FROM gcr.io/distroless/cc-debian13:nonroot AS search
+COPY --from=ocr /out /
+COPY --from=clerk /out /
+COPY --from=build /shelf /shelf
+COPY --from=office /office /usr/share/grind/web
+# Each of them runs, with every library and its data found.
+RUN ["/usr/bin/tesseract", "--list-langs"]
+RUN ["/usr/bin/pdftoppm", "-v"]
+RUN ["/usr/local/bin/clerk", "--version"]
+ENV SHELF_CONFIG=/config/config.json
+ENV SHELF_OFFICE_DIR=/usr/share/grind/web
+# The index is the only thing kept besides the config; `shelf index` fills it.
+ENV SHELF_SEARCH_INDEX=/config/search/index.sqlite
+EXPOSE 8443
+ENTRYPOINT ["/shelf"]
+CMD ["serve"]
+
+# ---- The default image, without search.
 # static-debian13: no shell, no package manager, no libc; ~2 MB plus the binary.
 # :nonroot runs as uid/gid 65532.
 FROM gcr.io/distroless/static-debian13:nonroot

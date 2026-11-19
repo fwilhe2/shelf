@@ -219,7 +219,8 @@ With [clerk](https://github.com/fwilhe2/clerk) installed and `"search": {"index"
 "/var/lib/shelf/clerk.sqlite"}` in the config (or `$SHELF_SEARCH_INDEX`), the web
 UI gets a search box that finds files by the words in their name or text, in
 the shares you may access. `shelf index` reads the shares into the index; run
-it by hand or from a timer. Details in [docs/search.md](docs/search.md).
+it by hand or from a timer. Details, and the container image with search (distroless too, ~120 MB), in
+[docs/search.md](docs/search.md).
 
 ## Viewing files
 
@@ -313,7 +314,8 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 | `fs.go` | the virtual file system: `/` lists shares, each share is an `os.Root` |
 | `web/index.html` | the whole web UI, including the viewer, embedded into the binary |
 | `web/vendor/` | third-party code the web UI loads (PDF.js), see [THIRD_PARTY.md](THIRD_PARTY.md) |
-| `Containerfile`, `deploy/` | container image, Quadlet unit, backup script and timer |
+| `Containerfile`, `deploy/` | container images (default, and `search`), Quadlet unit, backup script and timer |
+| `deploy/third-party.sh` | collects the search image's Debian packages and clerk's crates with their licences, and checks them against THIRD_PARTY.md |
 | `test/e2e.sh` | end-to-end test and demo of the container (run by CI, see below) |
 | `test/browser/` | browser tests of the web UI in Chromium and Firefox (run by CI) |
 

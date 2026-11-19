@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Weekly too: the search image's Debian packages change with Debian's
+  # updates, and its build checks them against THIRD_PARTY.md.
+  schedule:
+    - cron: "17 5 * * 1"
 
 permissions:
   contents: read
@@ -40,6 +44,18 @@ jobs:
         run: podman build -t localhost/shelf:latest .
       - name: Run the end-to-end test
         run: test/e2e.sh
+
+  search-image:
+    name: Search image (and THIRD_PARTY.md)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Allow rootless Podman
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Build the search image
+        # Fails when the Debian packages or clerk's crate licences in it differ
+        # from THIRD_PARTY.md (deploy/third-party.sh).
+        run: podman build --target search -t localhost/shelf:search .
 
   browser:
     name: Browser tests (Chromium, Firefox)
