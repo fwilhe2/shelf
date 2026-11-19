@@ -1,20 +1,21 @@
 #!/bin/bash
-# A throwaway shelf with full-text search, to try it out: the "search" image,
-# with the demo files of test/demo-data.sh in a share that lives in memory
-# only. Ctrl+C stops it, and nothing of it is left.
+# A throwaway shelf to try it out: the container image, with the demo files
+# of test/demo-data.sh in a share that lives in memory only. Ctrl+C stops it,
+# and nothing of it is left.
 #
 #   test/demo.sh            then open http://localhost:18080/, user demo, password demo
 #
 # The share and the config (with the search index) are in a directory in
 # $XDG_RUNTIME_DIR (or /dev/shm), which is memory (tmpfs), and removed on exit.
 # The demo files are made once and kept in ~/.cache/shelf-demo-data (or
-# DEMO_DATA=DIR). The image is built from this working tree each time, as
-# localhost/shelf:search (the first build takes minutes, later ones seconds),
-# unless IMAGE names one to use as it is. PORT: default 18080.
+# DEMO_DATA=DIR). The image is built from this working tree each time (the
+# first build takes minutes, later ones seconds), as localhost/shelf:demo, so a
+# shelf you run from :latest is left alone; IMAGE=NAME uses that image as it
+# is instead. PORT: default 18080.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
-image=${IMAGE:-localhost/shelf:search}
+image=${IMAGE:-localhost/shelf:demo}
 port=${PORT:-18080}
 demo=${DEMO_DATA:-${XDG_CACHE_HOME:-$HOME/.cache}/shelf-demo-data}
 mem=${XDG_RUNTIME_DIR:-/dev/shm}
@@ -30,7 +31,7 @@ fi
 # Always from the working tree; the layer cache makes this quick when little changed.
 if [[ -z ${IMAGE:-} ]]; then
 	echo "Building $image from $repo …"
-	log=$(podman build --target search -t "$image" "$repo" 2>&1) || { echo "$log" >&2; exit 1; }
+	log=$(podman build -t "$image" "$repo" 2>&1) || { echo "$log" >&2; exit 1; }
 fi
 
 work=$(mktemp -d "$mem/shelf-demo.XXXXXX")

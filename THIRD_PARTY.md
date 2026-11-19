@@ -47,18 +47,15 @@ Left out of the PDF.js package on purpose:
 
 ## In the container image only
 
+The container image is [distroless](https://github.com/GoogleContainerTools/distroless)
+`cc-debian13` (Apache-2.0, plus the licences of the Debian packages it
+contains). It adds grind's web page for office documents, and for full-text
+search clerk, and tesseract and poppler's `pdftoppm` with the Debian packages
+they load (see [docs/search.md](docs/search.md)).
+
 | Component | Licence | Where |
 |---|---|---|
 | [grind](https://github.com/fwilhe2/grind)'s web page | AGPL-3.0-or-later | `/usr/share/grind/web`, copied from `ghcr.io/fwilhe2/grind-web`. Its own third-party components are listed in the page: command palette (Ctrl+K) ▸ *About this build*. |
-| [distroless](https://github.com/GoogleContainerTools/distroless) `static-debian13` | Apache-2.0, plus the licences of the Debian packages it contains | the base image, see `/usr/share/doc` in it |
-
-## In the search image only
-
-The search image (`podman build --target search`, see
-[docs/search.md](docs/search.md)) is distroless too, on
-[`cc-debian13`](https://github.com/GoogleContainerTools/distroless) instead of
-`static-debian13`, and adds clerk, and tesseract and poppler's `pdftoppm` with
-the Debian packages they load. It has grind's page too, as above.
 
 `deploy/third-party.sh` collects these while the image is built, and **the
 build fails when they differ from the lists below**: a new package, a package

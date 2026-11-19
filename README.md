@@ -15,7 +15,7 @@ invoice taken with a phone, and in a scanned letter](docs/screenshots/search.png
 - **Find a file by what is in it.** Full-text search reads PDFs, office
   documents and text files, and with OCR, scans and photos of paper: the
   invoice you photographed is found by its customer number
-  ([clerk](https://github.com/fwilhe2/clerk), optional).
+  ([clerk](https://github.com/fwilhe2/clerk)).
 - **Open everything right in the browser.** Photos, videos, music, PDFs and
   text, and spreadsheets and documents with
   [grind](https://github.com/fwilhe2/grind), an office suite that runs in the
@@ -31,7 +31,7 @@ invoice taken with a phone, and in a scanned letter](docs/screenshots/search.png
 
 Try it in one command, with demo files, in memory only:
 `test/demo.sh`, then open <http://localhost:18080/> (user `demo`, password
-`demo`). See [Search](#search).
+`demo`).
 
 | | |
 |---|---|
@@ -49,65 +49,26 @@ alt="Search on a phone: a photo of the Apollo 11 plaque, found by the words on i
   download folders as zip, rename, delete, new folder. Works on phones too.
 - **Viewer**: photos, videos, music, PDFs and text files open right in the
   browser. Flip through a folder with the arrow keys or by swiping.
-- **Office documents** (optional): open spreadsheets and text documents
+- **Office documents**: open spreadsheets and text documents
   in the browser with grind. See [below](#office-documents).
-- **Full-text search** (optional): find files by the words in their name or
+- **Full-text search**: find files by the words in their name or
   text, with OCR for scans and photos. See [below](#search).
 - **Network drive**: every share can be mounted via WebDAV.
 - **Users and shares**: shares can be read-only and limited to some users.
-- **Runs anywhere Linux does**: directly on the host (also a Raspberry Pi) or
-  in a rootless Podman container.
+- **One container image with everything**, rootless Podman, also on a
+  Raspberry Pi. The plain binary runs without a container, too.
 
 The screenshots show only the demo files of `test/demo-data.sh` (public domain
 or made by the script); `test/browser/screenshots.js` takes them again.
 
 <br clear="right">
 
-## Build
+## Install (Podman, rootless, e.g. Fedora Silverblue)
 
-Requires Go 1.26 or newer.
-
-```sh
-go build -o shelf .
-
-# for a Raspberry Pi 3/4/5 running a 64-bit OS:
-GOOS=linux GOARCH=arm64 go build -o shelf .
-```
-
-## Quick start (just try it)
-
-```sh
-export SHELF_CONFIG=$PWD/shelf.json
-./shelf init -data ~/nas-data      # asks for a user name and password
-./shelf serve
-```
-
-Open the printed address (e.g. `http://192.168.1.20:8080/`) in a browser.
-
-## Install as a service
-
-```sh
-sudo install -m 755 shelf /usr/local/bin/shelf
-sudo useradd --system --home-dir /srv/shelf --shell /usr/sbin/nologin shelf
-sudo mkdir -p /srv/shelf && sudo chown shelf:shelf /srv/shelf
-
-sudo shelf init -data /srv/shelf
-sudo chown shelf:shelf /etc/shelf/config.json
-
-sudo install -m 644 shelf.service /etc/systemd/system/
-sudo systemctl enable --now shelf
-journalctl -u shelf            # shows the addresses it is reachable on
-```
-
-If you'd rather keep files owned by your own account, set `User=`/`Group=` in
-`shelf.service` to your user and run `init` with `-data` pointing to a directory
-you own. If share directories are under `/home`, remove `ProtectHome=read-only`.
-
-## Run in a container (Podman, rootless, e.g. Fedora Silverblue)
-
-The `Containerfile` builds a ~26 MB image: a static binary (with PDF.js built in) plus
-[grind's web page](#office-documents) (~10 MB) on
-`distroless/static:nonroot`, without a shell or package manager. The container runs
+The `Containerfile` builds one image with everything: shelf (with PDF.js
+built in), [grind's web page](#office-documents) for office documents, and
+[clerk with OCR](#search) for full-text search, about 120 MB, on distroless
+(`cc-debian13:nonroot`), without a shell or package manager. The container runs
 rootless via a [Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
 unit with a read-only root file system, no capabilities and `no-new-privileges`.
 
@@ -132,11 +93,14 @@ podman run --rm -it --userns keep-id:uid=65532,gid=65532 \
 podman run --rm --userns keep-id:uid=65532,gid=65532 -v ~/.config/shelf:/config:z \
   localhost/shelf cert -hosts nas.local,192.168.1.20
 
-# install and start the service
-mkdir -p ~/.config/containers/systemd
+# install and start the service, and the hourly search indexing
+mkdir -p ~/.config/containers/systemd ~/.config/systemd/user
 cp deploy/shelf.container ~/.config/containers/systemd/
+cp deploy/shelf-index.service deploy/shelf-index.timer ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user start shelf
+systemctl --user enable --now shelf-index.timer
+systemctl --user start shelf-index    # index the files now, not in an hour
 loginctl enable-linger $USER     # keep it running when you are logged out
 journalctl --user -u shelf       # logs
 ```
@@ -181,6 +145,52 @@ The destination must exist already. If it is missing (backup disk not mounted),
 the backup fails instead of filling up the system disk. The last 14 snapshots
 are kept (`BACKUP_KEEP=` in `backup.env`). The destination should be on a
 different disk, ideally one you can also keep somewhere else.
+
+## Without a container
+
+shelf is one static binary; it runs without a container, too. Office documents
+and search are then off until you set them up ([office documents](#office-documents),
+[search](#search)).
+
+### Build
+
+Requires Go 1.26 or newer.
+
+```sh
+go build -o shelf .
+
+# for a Raspberry Pi 3/4/5 running a 64-bit OS:
+GOOS=linux GOARCH=arm64 go build -o shelf .
+```
+
+### Quick start (just try it)
+
+```sh
+export SHELF_CONFIG=$PWD/shelf.json
+./shelf init -data ~/nas-data      # asks for a user name and password
+./shelf serve
+```
+
+Open the printed address (e.g. `http://192.168.1.20:8080/`) in a browser.
+
+### Install as a service
+
+```sh
+sudo install -m 755 shelf /usr/local/bin/shelf
+sudo useradd --system --home-dir /srv/shelf --shell /usr/sbin/nologin shelf
+sudo mkdir -p /srv/shelf && sudo chown shelf:shelf /srv/shelf
+
+sudo shelf init -data /srv/shelf
+sudo chown shelf:shelf /etc/shelf/config.json
+
+sudo install -m 644 shelf.service /etc/systemd/system/
+sudo systemctl enable --now shelf
+journalctl -u shelf            # shows the addresses it is reachable on
+```
+
+If you'd rather keep files owned by your own account, set `User=`/`Group=` in
+`shelf.service` to your user and run `init` with `-data` pointing to a directory
+you own. If share directories are under `/home`, remove `ProtectHome=read-only`.
 
 ## HTTPS
 
@@ -257,15 +267,17 @@ with `"office_dir"` in the config or `$SHELF_OFFICE_DIR`. Without either, it is 
 
 ## Search
 
-With [clerk](https://github.com/fwilhe2/clerk) installed and `"search": {"index":
-"/var/lib/shelf/clerk.sqlite"}` in the config (or `$SHELF_SEARCH_INDEX`), the web
-UI gets a search box that finds files by the words in their name or text, in
-the shares you may access. `shelf index` reads the shares into the index; run
-it by hand or from a timer. Details, and the container image with search (distroless too, ~120 MB), in
-[docs/search.md](docs/search.md).
+The search box in the web UI finds files by the words in their name or text,
+in the shares you may access, with [clerk](https://github.com/fwilhe2/clerk):
+PDFs, office documents, text files, and with OCR (tesseract) scans and photos.
+`shelf index` reads new and changed files into the index; in the container,
+`deploy/shelf-index.timer` runs it every hour. The container image has
+everything and turns search on. Without the container, install clerk and set
+`"search": {"index": "/var/lib/shelf/clerk.sqlite"}` in the config (or
+`$SHELF_SEARCH_INDEX`). Details in [docs/search.md](docs/search.md).
 
-To try it out, `test/demo.sh` starts a throwaway container with search and a
-share of demo files (PDFs with and without text, scans, photos with text,
+To try it out, `test/demo.sh` starts a throwaway container with a share of
+demo files (PDFs with and without text, scans, photos with text,
 office documents; all public domain or made by `test/demo-data.sh`), kept in
 memory only: open <http://localhost:18080/>, user `demo`, password `demo`.
 
@@ -361,18 +373,18 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 | `fs.go` | the virtual file system: `/` lists shares, each share is an `os.Root` |
 | `web/index.html` | the whole web UI, including the viewer, embedded into the binary |
 | `web/vendor/` | third-party code the web UI loads (PDF.js), see [THIRD_PARTY.md](THIRD_PARTY.md) |
-| `Containerfile`, `deploy/` | container images (default, and `search`), Quadlet unit, backup script and timer |
-| `deploy/third-party.sh` | collects the search image's Debian packages and clerk's crates with their licences, and checks them against THIRD_PARTY.md |
+| `Containerfile`, `deploy/` | the container image, Quadlet unit, search index timer, backup script and timer |
+| `deploy/third-party.sh` | collects the image's Debian packages and clerk's crates with their licences, and checks them against THIRD_PARTY.md |
 | `test/e2e.sh` | end-to-end test and demo of the container (run by CI, see below) |
 | `test/browser/` | browser tests of the web UI in Chromium and Firefox (run by CI) |
-| `test/demo.sh`, `test/demo-data.sh` | a throwaway container with search and demo files |
+| `test/demo.sh`, `test/demo-data.sh` | a throwaway container with demo files |
 
 ## Tests
 
 `go test ./...` runs the unit tests. `test/e2e.sh` builds nothing itself: after
 `podman build -t localhost/shelf:latest .` it runs the image like
 `deploy/shelf.container`, sets it up with HTTPS, two users and three shares, uploads,
-downloads, renames and deletes files over the web API and WebDAV, and checks on
+downloads, renames, deletes and searches files over the web API and WebDAV, and checks on
 the host that every file was stored correctly, that access rules hold, that
 nothing is lost on a restart and that the backup script works.
 `test/browser/` drives the web UI in Chromium and Firefox with Playwright: the

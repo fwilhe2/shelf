@@ -7,7 +7,8 @@ and never reads the index itself, so clerk's index format stays clerk's.
 
 ## Turning it on
 
-Install `clerk`, and for scans and photos `tesseract` (with the languages of
+The container image has everything and search is on; see [The
+container](#the-container). Without it, install `clerk`, and for scans and photos `tesseract` (with the languages of
 your documents, e.g. `tesseract-langpack-deu` on Fedora,
 `tesseract-ocr-deu` on Debian) and poppler's `pdftoppm`. Then name the index in
 the config:
@@ -54,15 +55,14 @@ the boundary.
 
 ## The container
 
-The default image stays as small as it is and has no search. The `search`
-target is distroless too (`cc-debian13`, with glibc; no shell, no package
-manager), about 120 MB instead of 32 MB: shelf, clerk, tesseract (English and
-German) and poppler's `pdftoppm`, with only the Debian packages these load.
-The index is at `/config/search/index.sqlite`:
+The image has clerk, tesseract (English and German) and poppler's `pdftoppm`,
+and search is on, with the index at `/config/search/index.sqlite`. It is
+distroless (`cc-debian13`, with glibc; no shell, no package manager), about
+120 MB. `deploy/shelf-index.timer` runs `shelf index` in the running container
+every hour (see the README); by hand:
 
 ```sh
-podman build --target search -t localhost/shelf:search .
-podman exec shelf /shelf index          # in the running container
+podman exec shelf /shelf index
 ```
 
 `deploy/third-party.sh` collects the Debian packages and clerk's crates with

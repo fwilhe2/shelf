@@ -284,6 +284,17 @@ check "the office page is served at /office/" \
 check "… precompressed for browsers that accept gzip" \
     bash -c "curl -sS -D - -o /dev/null -H 'Accept-Encoding: gzip' --cacert '$cfg/ca.crt' '$base/office/' | grep -qi '^content-encoding: gzip'"
 
+# ---------------------------------------------------------------- search
+
+section "Full-text search"
+
+check "shelf index reads the shares (clerk, in the running container)" shelf_exec index
+check "alice finds the recipe by a word in it, in files and in her private share" \
+    test "$(api "$base/api/search?q=K%C3%BCche" | jq -c '[.results[].path] | sort')" = '["/files/Küchen-Rezept 🍰.txt","/taxes/2026.txt"]'
+check "bob finds it only in files, not in alice's private share" \
+    test "$(c "${bob[@]}" "$base/api/search?q=K%C3%BCche" | jq -c '[.results[].path]')" = '["/files/Küchen-Rezept 🍰.txt"]'
+check "the index is kept in the config directory, not in a share" test -f "$cfg/search/index.sqlite"
+
 # ---------------------------------------------------------------- viewer
 
 section "Viewing files"

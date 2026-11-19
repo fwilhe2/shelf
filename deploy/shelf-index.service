@@ -1,0 +1,10 @@
+[Unit]
+Description=Read new and changed files of shelf into the search index
+Requires=shelf.service
+After=shelf.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/podman exec shelf /shelf index
+Nice=10
+IOSchedulingClass=idle

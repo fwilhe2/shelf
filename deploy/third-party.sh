@@ -1,7 +1,7 @@
 #!/bin/bash
-# Collects the third-party parts of the search image (Containerfile, target
-# "search") with their licences, and checks them against THIRD_PARTY.md, so
-# the image cannot ship anything that is not listed there.
+# Collects the third-party parts of the container image (Containerfile) with
+# their licences, and checks them against THIRD_PARTY.md, so the image cannot
+# ship anything that is not listed there.
 #
 #   third-party.sh debs OUT BASE_STATUS_D THIRD_PARTY.md PROGRAM... -- PACKAGE...
 #       Copies the Debian packages that own PROGRAMs and every library they
