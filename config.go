@@ -40,9 +40,11 @@ type Config struct {
 	TLSCA   string `json:"tls_ca,omitempty"` // offered for download at /ca.crt
 	// OfficeDir holds grind's web page, to open office documents in the
 	// browser (docs/office.md). Defaults to $SHELF_OFFICE_DIR.
-	OfficeDir string  `json:"office_dir,omitempty"`
-	Users     []User  `json:"users"`
-	Shares    []Share `json:"shares"`
+	OfficeDir string `json:"office_dir,omitempty"`
+	// Search turns on full-text search with clerk (docs/search.md).
+	Search *SearchConfig `json:"search,omitempty"`
+	Users  []User        `json:"users"`
+	Shares []Share       `json:"shares"`
 }
 
 var (
@@ -95,6 +97,11 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("share %q: path must be absolute, got %q", s.Name, s.Path)
 		}
 		shares[s.Name] = true
+	}
+	if c.Search != nil {
+		if err := c.Search.validate(c.Shares); err != nil {
+			return err
+		}
 	}
 	return nil
 }

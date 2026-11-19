@@ -2,7 +2,8 @@
 
 Drive shelf's web UI in Chromium and Firefox with
 [Playwright](https://playwright.dev): the file viewer (pictures, video,
-music, PDFs, text) and office documents in grind's page.
+music, PDFs, text), office documents in grind's page, and search (with a
+stand-in for clerk that `server.sh` writes).
 
 ```sh
 cd test/browser

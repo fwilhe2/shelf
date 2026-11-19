@@ -20,6 +20,23 @@ fi
 node "$here/fixtures.js" "$work/files"
 printf 'alice\npw\n' | "$work/shelf" init -c "$work/config.json" -data "$work/files" \
     -listen "127.0.0.1:${PORT:-18090}" >/dev/null 2>&1
+# Search, with a stand-in for clerk: "hello" finds three files, anything else none.
+f=$work/files
+cat >"$work/clerk" <<EOF
+#!/bin/sh
+for word; do :; done
+case "\$3:\$word" in find:hello) cat <<'HITS' ;; esac
+{"path":"$f/testpage.pdf","hash":"00","size":1,"context":"…[Hello] from shelf Second page"}
+{"path":"$f/blob.bin","hash":"00","size":4,"context":null}
+{"path":"$f/notes.md","hash":"00","size":1,"context":"# Notes [Hello] from shelf."}
+HITS
+EOF
+chmod +x "$work/clerk"
+: >"$work/clerk.sqlite"
+node -e 'const fs = require("fs"), [c, w] = process.argv.slice(1), cfg = JSON.parse(fs.readFileSync(c));
+  cfg.search = { index: w + "/clerk.sqlite", clerk: w + "/clerk" };
+  fs.writeFileSync(c, JSON.stringify(cfg))' "$work/config.json" "$work"
+
 SHELF_OFFICE_DIR=${GRIND_WEB:-} "$work/shelf" serve -c "$work/config.json" &
 pid=$!
 wait $pid

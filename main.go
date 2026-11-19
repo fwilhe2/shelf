@@ -43,6 +43,8 @@ Usage:
 
   shelf cert [-hosts a,b] [-new-ca]          turn on HTTPS with a certificate from a private CA
 
+  shelf index                                read all shares for full-text search (see docs/search.md)
+
 Every command accepts -c FILE (default: $SHELF_CONFIG or /etc/shelf/config.json).
 Changes to users and shares are picked up by a running server automatically.
 `
@@ -64,6 +66,8 @@ func main() {
 		err = cmdShare(args)
 	case "cert":
 		err = cmdCert(args)
+	case "index":
+		err = cmdIndex(args)
 	case "help", "-h", "-help", "--help":
 		fmt.Print(usageText)
 	default:
@@ -229,6 +233,15 @@ func cmdServe(args []string) error {
 			log.Printf("warning: office documents: %v", err)
 		} else {
 			log.Printf("office documents: serving the page from %s at %s", d, officePrefix)
+		}
+	}
+	if sc := srv.search(); sc != nil {
+		if err := sc.validate(cfg.Shares); err != nil {
+			log.Printf("warning: search: %v", err)
+		} else if _, err := os.Stat(sc.Index); err != nil {
+			log.Printf("search: nothing indexed yet, run 'shelf index' (%v)", err)
+		} else {
+			log.Printf("search: with clerk's index %s", sc.Index)
 		}
 	}
 

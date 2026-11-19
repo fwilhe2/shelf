@@ -129,6 +129,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/shares", s.api(s.handleShares))
 	mux.HandleFunc("GET /api/list", s.api(s.handleList))
 	mux.HandleFunc("GET /api/zip", s.api(s.handleZip))
+	mux.HandleFunc("GET /api/search", s.api(s.handleSearch))
 	mux.HandleFunc(davPrefix+"/", s.handleDAV)
 	mux.HandleFunc(davPrefix, func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = davPrefix + "/"
@@ -312,7 +313,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, user string, _
 	if s.officeDir() != "" {
 		office = officeExts
 	}
-	writeJSON(w, map[string]any{"user": user, "ca": s.config().TLSCA != "", "office": office})
+	writeJSON(w, map[string]any{"user": user, "ca": s.config().TLSCA != "", "office": office, "search": s.search() != nil})
 }
 
 // handleCACert offers the CA certificate, so devices can trust it. It is

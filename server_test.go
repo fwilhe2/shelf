@@ -24,6 +24,12 @@ type testEnv struct {
 
 func newTestEnv(t *testing.T) *testEnv {
 	t.Helper()
+	return newTestEnvWith(t, nil)
+}
+
+// newTestEnvWith is newTestEnv, with the config changed by edit before the server starts.
+func newTestEnvWith(t *testing.T, edit func(cfg *Config, dirs map[string]string)) *testEnv {
+	t.Helper()
 	base := t.TempDir()
 	dirs := map[string]string{}
 	for _, n := range []string{"files", "media", "private", "outside"} {
@@ -47,6 +53,9 @@ func newTestEnv(t *testing.T) *testEnv {
 			{Name: "media", Path: dirs["media"], ReadOnly: true},
 			{Name: "private", Path: dirs["private"], Users: []string{"bob"}},
 		},
+	}
+	if edit != nil {
+		edit(cfg, dirs)
 	}
 	cfgPath := filepath.Join(base, "config.json")
 	if err := cfg.Save(cfgPath); err != nil {

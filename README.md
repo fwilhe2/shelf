@@ -11,6 +11,9 @@ enterprise features. Runs directly on the host or in a rootless Podman container
 - **Office documents** (optional): open spreadsheets and text documents
   (`.ods`, `.odt`, `.xlsx`, `.docx`, …) right in the browser with
   [grind](https://github.com/fwilhe2/grind). See below.
+- **Full-text search** (optional): find files by the words in them, in PDFs,
+  office documents, and with OCR in scans and photos, with
+  [clerk](https://github.com/fwilhe2/clerk). See below.
 - **Network drive**: every share can be mounted via WebDAV in Linux file managers,
   macOS Finder and Windows Explorer.
 - **Users and shares**: a share is a directory on disk. Shares can be read-only
@@ -210,6 +213,14 @@ container, point shelf to a built grind page (`ui_web/dist` of grind 8bf5f12 or 
 `podman create ghcr.io/fwilhe2/grind-web` and `podman cp …:/usr/share/grind/web`)
 with `"office_dir"` in the config or `$SHELF_OFFICE_DIR`. Without either, it is off.
 
+## Search
+
+With [clerk](https://github.com/fwilhe2/clerk) installed and `"search": {"index":
+"/var/lib/shelf/clerk.sqlite"}` in the config (or `$SHELF_SEARCH_INDEX`), the web
+UI gets a search box that finds files by the words in their name or text, in
+the shares you may access. `shelf index` reads the shares into the index; run
+it by hand or from a timer. Details in [docs/search.md](docs/search.md).
+
 ## Viewing files
 
 Clicking a file's name opens it in a viewer over the file list, if the browser
@@ -279,7 +290,8 @@ raise `FileSizeLimitInBytes` (same registry key, max `0xffffffff`), or use
 To change `listen`, edit the file and restart the server. Optional:
 `"tls_cert"` and `"tls_key"` (PEM file paths) turn on HTTPS, and `"tls_ca"` is
 offered for download at `/ca.crt`. `shelf cert` sets all three. `"office_dir"`
-turns on [office documents](#office-documents).
+turns on [office documents](#office-documents), `"search"` turns on
+[search](#search).
 
 ## Security notes
 
@@ -291,10 +303,11 @@ access from outside, use a VPN such as WireGuard or Tailscale.
 
 | File | What |
 |---|---|
-| `main.go` | command line (`init`, `serve`, `user`, `share`) |
+| `main.go` | command line (`init`, `serve`, `user`, `share`, `cert`, `index`) |
 | `config.go` | config file loading, validation, atomic saving |
 | `server.go` | HTTP: login, JSON API for the UI, zip download, WebDAV |
 | `office.go` | serves grind's web page for office documents under `/office/` |
+| `search.go` | full-text search with clerk: `shelf index` and `/api/search` |
 | `static.go` | serves the vendored third-party files (`web/vendor/`) and licence texts (`web/licenses/`) |
 | `cert.go` | private CA, server certificates, automatic renewal |
 | `fs.go` | the virtual file system: `/` lists shares, each share is an `os.Root` |
