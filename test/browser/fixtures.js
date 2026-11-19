@@ -45,6 +45,8 @@ function png(w, h, pixel) {
 }
 write("a-photo.png", png(640, 400, (x, y) => [x * 255 / 640, y * 255 / 400, 160]));
 write("b-photo.png", png(300, 500, (x, y) => [40, x * 255 / 300, y * 255 / 500]));
+// Bigger than the viewer in both directions: it must be scaled down to fit.
+write("large-photo.png", png(1600, 1300, (x, y) => [200, x * 255 / 1600, y * 255 / 1300]));
 
 // ---- PDF: two pages of text in Helvetica, which PDFs may use without embedding it
 function pdf(pages) {

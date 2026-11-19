@@ -30,6 +30,17 @@ test("pictures: arrow keys flip through the folder, Esc closes", async ({ page }
   await expect(page).toHaveURL(/#\/files$/);
 });
 
+test("a picture bigger than the viewer is scaled down to fit it", async ({ page }) => {
+  const v = viewer(page);
+  await open(page, "large-photo.png");
+  const img = v.body.locator("img");
+  await expect.poll(() => img.evaluate(i => i.complete && i.naturalWidth)).toBe(1600);
+  const [box, body] = [await img.boundingBox(), await v.body.boundingBox()];
+  expect(box.height).toBeLessThanOrEqual(body.height + 1);
+  expect(box.width).toBeLessThanOrEqual(body.width + 1);
+  expect(box.y).toBeGreaterThanOrEqual(body.y - 1);
+});
+
 test("the browser's Back button closes the viewer", async ({ page }) => {
   await open(page, "notes.md");
   await expect(viewer(page).root).toBeVisible();
