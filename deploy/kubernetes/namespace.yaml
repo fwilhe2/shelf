@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shelf
+  labels:
+    # shelf runs as non-root, read-only, without capabilities: it passes the
+    # strictest Pod Security Standard.
+    pod-security.kubernetes.io/enforce: restricted

@@ -128,6 +128,9 @@ directory, add a `Volume=` line to the unit first.
 To update: pull the new source, run `podman build -t localhost/shelf:latest .`
 again and then `podman auto-update` (or `systemctl --user restart shelf`).
 
+To run shelf on Kubernetes instead, with the image CI publishes as
+`ghcr.io/fwilhe2/shelf`, see [deploy/kubernetes](deploy/kubernetes/README.md).
+
 ### Automatic backups
 
 `deploy/shelf-backup` uses rsync to create a daily snapshot of `~/.config/shelf`
@@ -384,6 +387,7 @@ internet. For remote access, use a VPN such as WireGuard or Tailscale.
 | `web/index.html` | the whole web UI, including the viewer, embedded into the binary |
 | `web/vendor/` | third-party code the web UI loads (PDF.js), see [THIRD_PARTY.md](THIRD_PARTY.md) |
 | `Containerfile`, `deploy/` | the container image, Quadlet unit, search index timer, backup script and timer |
+| `deploy/kubernetes/` | Kubernetes manifests (Kustomize) for the same image |
 | `deploy/third-party.sh` | collects the image's Debian packages and clerk's crates with their licences, and checks them against THIRD_PARTY.md |
 | `test/e2e.sh` | end-to-end test and demo of the container (run by CI, see below) |
 | `test/browser/` | browser tests of the web UI in Chromium and Firefox (run by CI) |

@@ -1,0 +1,72 @@
+# Hourly `shelf index`, as deploy/shelf-index.timer does for Podman: reads new
+# and changed files into the search index on the config volume. It needs the
+# same volumes as the server, and they are ReadWriteOnce, so it runs on the
+# server's node. shelf itself keeps two indexers from running at once.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: shelf-index
+spec:
+  schedule: "7 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: shelf
+            app.kubernetes.io/component: index
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: shelf
+                      app.kubernetes.io/component: server
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            fsGroup: 65532
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: index
+              image: ghcr.io/fwilhe2/shelf
+              args: [index]
+              resources:
+                # OCR (tesseract) of scans and photos takes the most.
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 2Gi
+              securityContext:
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                - name: data
+                  mountPath: /data
+                  # The indexer only reads the files.
+                  readOnly: true
+          volumes:
+            - name: config
+              persistentVolumeClaim:
+                claimName: shelf-config
+            - name: data
+              persistentVolumeClaim:
+                claimName: shelf-data

@@ -1,0 +1,16 @@
+# Inside the cluster only. To reach shelf from the home network, make this
+# type: LoadBalancer (k3s' ServiceLB, MetalLB) or NodePort. An Ingress works
+# for the web UI and WebDAV too, but it must allow big request bodies (uploads)
+# and long requests; and with `shelf cert`, shelf does TLS itself.
+apiVersion: v1
+kind: Service
+metadata:
+  name: shelf
+spec:
+  selector:
+    app.kubernetes.io/name: shelf
+    app.kubernetes.io/component: server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

@@ -1,0 +1,29 @@
+# The same two directories as the Quadlet unit (deploy/shelf.container):
+# /config holds config.json, the TLS files and the search index; /data the
+# shared files. shelf rewrites config.json itself (`shelf user add`, `shelf
+# cert`) and picks up the changes while it runs, so it is a volume, not a
+# ConfigMap.
+#
+# The cluster's default StorageClass provisions both. To keep the files on a
+# particular disk of a single-node cluster, create a PersistentVolume (e.g. a
+# `local` or `hostPath` one) for each and set volumeName: here. Make the
+# directory writable by uid/gid 65532, or let fsGroup in the Deployment do it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shelf-config
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi # the search index grows with the files, roughly 1–2 % of them
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shelf-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 500Gi
