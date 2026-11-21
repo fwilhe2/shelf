@@ -47,7 +47,7 @@ the last run found, and *Update now* starts a run. Its API:
 shelf index
 ```
 
-Two runs at once are refused, whichever started them.
+Only one run at a time: `shelf index` waits for one the server started.
 
 A share whose directory is missing (an unmounted disk) is left out, and its
 files stay in the index as they were.

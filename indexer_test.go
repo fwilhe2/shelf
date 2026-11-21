@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -109,5 +110,36 @@ func TestIndexEvery(t *testing.T) {
 		if _, err := (&SearchConfig{Every: s}).every(); err == nil {
 			t.Errorf("%q should be refused", s)
 		}
+	}
+}
+
+// shelf index waits for a run under way (e.g. the server's) instead of failing.
+func TestIndexWaitsForARunUnderWay(t *testing.T) {
+	var dir, cfgPath string
+	newTestEnvWith(t, func(cfg *Config, d map[string]string) {
+		dir = fakeClerk(t, cfg, nil)
+		cfgPath = filepath.Join(filepath.Dir(d["files"]), "config.json")
+	})
+	lock, err := os.OpenFile(filepath.Join(dir, "index.sqlite.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flock(lock, false); err != nil {
+		t.Fatal(err)
+	}
+	cfg, _ := LoadConfig(cfgPath)
+	if err := runIndex(cfg, io.Discard, false); err != errIndexBusy {
+		t.Fatalf("without waiting: %v", err)
+	}
+	done := make(chan error)
+	go func() { done <- cmdIndex([]string{"-c", cfgPath}) }()
+	select {
+	case err := <-done:
+		t.Fatalf("did not wait: %v", err)
+	case <-time.After(200 * time.Millisecond):
+	}
+	lock.Close()
+	if err := <-done; err != nil {
+		t.Fatal(err)
 	}
 }

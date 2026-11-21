@@ -78,10 +78,16 @@ func cmdIndex(args []string) error {
 	if err != nil {
 		return err
 	}
-	return runIndex(cfg, os.Stdout)
+	return runIndex(cfg, os.Stdout, true)
 }
 
-func flock(f *os.File) error { return syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) }
+func flock(f *os.File, wait bool) error {
+	how := syscall.LOCK_EX
+	if !wait {
+		how |= syscall.LOCK_NB
+	}
+	return syscall.Flock(int(f.Fd()), how)
+}
 
 // searchConfig is the config's "search", or else the one $SHELF_SEARCH_INDEX
 // (and $SHELF_CLERK) name, or nil when search is off.

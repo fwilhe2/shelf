@@ -29,7 +29,7 @@ const (
 	indexAfterChange  = 30 * time.Second
 )
 
-var errIndexBusy = errors.New("another 'shelf index' is running")
+var errIndexBusy = errors.New("another index run is under way")
 
 // every is how often the server indexes by itself; 0 for never.
 func (sc *SearchConfig) every() (time.Duration, error) {
@@ -50,8 +50,10 @@ func (sc *SearchConfig) every() (time.Duration, error) {
 	return d, nil
 }
 
-// runIndex has clerk read every share into the index, writing its report to out.
-func runIndex(cfg *Config, out io.Writer) error {
+// runIndex has clerk read every share into the index, writing its report to
+// out. While another run is under way, it waits for it with wait, else it
+// returns errIndexBusy.
+func runIndex(cfg *Config, out io.Writer, wait bool) error {
 	sc := searchConfig(cfg)
 	if sc == nil {
 		return errors.New(`search is off: set "search": {"index": "/var/lib/shelf/clerk.sqlite"} in the config (see docs/search.md)`)
@@ -67,8 +69,14 @@ func runIndex(cfg *Config, out io.Writer) error {
 		return err
 	}
 	defer lock.Close()
-	if err := flock(lock); err != nil {
-		return errIndexBusy
+	if err := flock(lock, false); err != nil {
+		if !wait {
+			return errIndexBusy
+		}
+		log.Printf("another index run is under way (shelf serve indexes by itself); waiting for it")
+		if err := flock(lock, true); err != nil {
+			return err
+		}
 	}
 
 	var dirs []string
@@ -180,7 +188,7 @@ func (s *Server) runIndexed() {
 	s.idx.mu.Unlock()
 
 	var out bytes.Buffer
-	err := runIndex(s.config(), &out)
+	err := runIndex(s.config(), &out, false)
 	reports := map[string]string{}
 	lines := bufio.NewScanner(&out)
 	var last string
