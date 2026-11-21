@@ -59,9 +59,13 @@ func (s *shareFS) Mkdir(_ context.Context, name string, perm os.FileMode) error 
 	return s.root.Mkdir(relPath(name), perm)
 }
 
-func (s *shareFS) OpenFile(_ context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
+func (s *shareFS) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
 	if s.readOnly && flag&writeFlags != 0 {
 		return nil, os.ErrPermission
+	}
+	// Written whole (PUT, COPY): see atomic.go.
+	if flag&(os.O_CREATE|os.O_TRUNC) == os.O_CREATE|os.O_TRUNC && flag&os.O_APPEND == 0 && relPath(name) != "." {
+		return createAtomic(ctx, s.root, relPath(name), perm)
 	}
 	f, err := s.root.OpenFile(relPath(name), flag, perm)
 	if err != nil {

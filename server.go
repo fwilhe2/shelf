@@ -390,6 +390,9 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request, _ string, fs
 	}
 	entries := make([]entry, 0, len(infos))
 	for _, fi := range infos {
+		if isTempName(fi.Name()) { // an upload still on its way
+			continue
+		}
 		e := entry{Name: fi.Name(), Dir: fi.IsDir(), Modified: fi.ModTime()}
 		if !e.Dir {
 			e.Size = fi.Size()
@@ -521,6 +524,9 @@ func (s *Server) handleDAV(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if r.Method == "PUT" {
+		r = watchUpload(r)
+	}
 	h := &webdav.Handler{
 		Prefix:     davPrefix,
 		FileSystem: fsys,
