@@ -126,9 +126,8 @@ file that is missing or differs.
 
 New files are found by their name right away, and by their text once indexed.
 The first index of a large import reads every document and runs OCR on every
-scan and photo, which can take hours on a small machine. Start it right after
-the import instead of waiting for the next automatic run, with the web UI's
-*Search index* dialog or by hand:
+scan and photo, which can take hours on a small machine. shelf indexes by itself within the hour, or start it right away
+with *Update now* in the web UI's *Search index* dialog, or by hand:
 
 ```sh
 podman exec shelf /shelf index

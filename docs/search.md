@@ -21,16 +21,33 @@ or set `$SHELF_SEARCH_INDEX` (and `$SHELF_CLERK`). `"clerk"` defaults to
 `clerk` on `$PATH`. The index must not be inside a share, and the user shelf
 runs as must be able to write to its directory.
 
-## Indexing: `shelf index`
+## Indexing
+
+Indexing has clerk read every share: the first time every file, and every text
+in it, which can take a while for scans; after that, only what changed. Files
+added since the last run are found once indexed.
+
+`shelf serve` indexes by itself:
+
+- a minute after it starts,
+- 30 seconds after the last change made through it (an upload, a rename, a
+  delete, from the web UI or WebDAV), so a scan from the phone is found soon,
+- and every hour, for files changed on the disk directly (rsync, another
+  program). Change that with `"every"` in `"search"` (e.g. `"15m"`, `"6h"`),
+  or `$SHELF_INDEX_EVERY`; `"off"` leaves only the first two.
+
+The web UI's *Search index* dialog (the button next to the search box) shows,
+for each share, how many files are indexed, when clerk last read it, and what
+the last run found, and *Update now* starts a run. Its API:
+`GET /api/index` for the status, `POST /api/index` to start a run.
+
+`shelf index` runs the same once, in the foreground, e.g. after a big import:
 
 ```sh
 shelf index
 ```
 
-has clerk read every share: the first time every file, and every text in it,
-which can take a while for scans; after that, only what changed. Run it by hand
-or from a timer; two at once are refused. Files that were added since are found
-by their name only once indexed.
+Two runs at once are refused, whichever started them.
 
 A share whose directory is missing (an unmounted disk) is left out, and its
 files stay in the index as they were.
@@ -58,8 +75,7 @@ the boundary.
 The image has clerk, tesseract (English and German) and poppler's `pdftoppm`,
 and search is on, with the index at `/config/search/index.sqlite`. It is
 distroless (`cc-debian13`, with glibc; no shell, no package manager), about
-120 MB. `deploy/shelf-index.timer` runs `shelf index` in the running container
-every hour (see the README); by hand:
+120 MB. The server indexes by itself, as above; by hand:
 
 ```sh
 podman exec shelf /shelf index

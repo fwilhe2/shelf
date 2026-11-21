@@ -55,11 +55,13 @@ spec:
               port: http
             periodSeconds: 10
           resources:
+            # shelf also runs the search indexer, and OCR (tesseract) of
+            # scans and photos takes the most.
             requests:
-              cpu: 50m
-              memory: 64Mi
+              cpu: 100m
+              memory: 256Mi
             limits:
-              memory: 512Mi
+              memory: 2Gi
           securityContext:
             # As in deploy/shelf.container: shelf only writes to /config and /data.
             readOnlyRootFilesystem: true

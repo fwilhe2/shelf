@@ -70,7 +70,7 @@ RUN ["/usr/bin/pdftoppm", "-v"]
 RUN ["/usr/local/bin/clerk", "--version"]
 ENV SHELF_CONFIG=/config/config.json
 ENV SHELF_OFFICE_DIR=/usr/share/grind/web
-# The index is the only thing kept besides the config; `shelf index` fills it.
+# The index is the only thing kept besides the config; shelf keeps it current.
 ENV SHELF_SEARCH_INDEX=/config/search/index.sqlite
 # No VOLUME instruction on purpose: it would silently create anonymous volumes
 # when a mount is forgotten, and files would end up somewhere unexpected.

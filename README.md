@@ -94,14 +94,11 @@ podman run --rm -it --userns keep-id:uid=65532,gid=65532 \
 podman run --rm --userns keep-id:uid=65532,gid=65532 -v ~/.config/shelf:/config:z \
   localhost/shelf cert -hosts nas.local,192.168.1.20
 
-# install and start the service, and the hourly search indexing
-mkdir -p ~/.config/containers/systemd ~/.config/systemd/user
+# install and start the service
+mkdir -p ~/.config/containers/systemd
 cp deploy/shelf.container ~/.config/containers/systemd/
-cp deploy/shelf-index.service deploy/shelf-index.timer ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user start shelf
-systemctl --user enable --now shelf-index.timer
-systemctl --user start shelf-index    # index the files now, not in an hour
 loginctl enable-linger $USER     # keep it running when you are logged out
 journalctl --user -u shelf       # logs
 ```
@@ -283,8 +280,10 @@ document viewing is disabled if neither is set.
 The web UI search finds files by words in their names or contents, limited to
 shares the user can access. It uses [clerk](https://github.com/fwilhe2/clerk)
 to index PDFs, office documents, and text files. Tesseract OCR adds text from
-scans and photos. Run `shelf index` to index new and changed files. In the
-container setup, `deploy/shelf-index.timer` runs the indexer hourly. The
+scans and photos. shelf keeps the index current by itself: shortly after
+files change through it, and every hour for files changed on the disk directly.
+The *Search index* dialog (the button next to the search box) shows when each
+share was last indexed and can start a run right away. The
 container image includes the required components and enables search. Without
 the container, install clerk and set
 `"search": {"index": "/var/lib/shelf/clerk.sqlite"}` in the config or set
@@ -383,13 +382,13 @@ internet. For remote access, use a VPN such as WireGuard or Tailscale.
 | `config.go` | config file loading, validation, atomic saving |
 | `server.go` | HTTP: login, JSON API for the UI, zip download, WebDAV |
 | `office.go` | serves grind's web page for office documents under `/office/` |
-| `search.go` | full-text search with clerk: `shelf index` and `/api/search` |
+| `search.go`, `indexer.go` | full-text search with clerk: `/api/search`, `shelf index`, and indexing by the server (`/api/index`) |
 | `static.go` | serves the vendored third-party files (`web/vendor/`) and licence texts (`web/licenses/`) |
 | `cert.go` | private CA, server certificates, automatic renewal |
 | `fs.go` | the virtual file system: `/` lists shares, each share is an `os.Root` |
 | `web/index.html` | the whole web UI, including the viewer, embedded into the binary |
 | `web/vendor/` | third-party code the web UI loads (PDF.js), see [THIRD_PARTY.md](THIRD_PARTY.md) |
-| `Containerfile`, `deploy/` | the container image, Quadlet unit, search index timer, backup script and timer |
+| `Containerfile`, `deploy/` | the container image, Quadlet unit, backup script and timer |
 | `deploy/kubernetes/` | Kubernetes manifests (Kustomize) for the same image |
 | `deploy/third-party.sh` | collects the image's Debian packages and clerk's crates with their licences, and checks them against THIRD_PARTY.md |
 | `test/e2e.sh` | end-to-end test and demo of the container (run by CI, see below) |

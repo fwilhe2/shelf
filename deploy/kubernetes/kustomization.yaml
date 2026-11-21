@@ -15,7 +15,6 @@ resources:
   - pvc.yaml
   - deployment.yaml
   - service.yaml
-  - index-cronjob.yaml
 images:
   - name: ghcr.io/fwilhe2/shelf
     newTag: latest

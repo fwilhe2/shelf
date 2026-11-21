@@ -13,7 +13,6 @@ on `main`, and `:1.2.3` / `:1.2` for a tag `v1.2.3`.
 | `pvc.yaml` | two volumes: `shelf-config` → `/config`, `shelf-data` → `/data` |
 | `deployment.yaml` | one shelf server |
 | `service.yaml` | port 8080, inside the cluster |
-| `index-cronjob.yaml` | `shelf index` every hour, for search |
 | `init-pod.yaml` | `shelf init`, once, to create the config |
 
 Both volumes come from the cluster's default StorageClass. To keep the files on
@@ -51,7 +50,7 @@ shelf share add photos /data/photos
 ```
 
 Share paths are inside the container: to share another disk, add a volume to
-`deployment.yaml` (and to `index-cronjob.yaml` for search).
+`deployment.yaml`. shelf keeps the search index current by itself (docs/search.md).
 
 For HTTPS, list the names and IPs devices use to reach shelf, then restart it:
 
