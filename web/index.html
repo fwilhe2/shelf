@@ -37,7 +37,7 @@
   .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
   .search input { width: 100%; padding: 7px 11px 7px 36px; border: 1px solid var(--border); border-radius: 8px;
                   background: var(--bg); }
-  .search + .spacer { flex: 0 1 auto; }
+  .search ~ .spacer { flex: 0 1 auto; }
 
   .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
          background: var(--panel); border-radius: 8px; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
@@ -178,6 +178,40 @@
   .about-list small { display: block; color: var(--muted); }
   dialog a { color: var(--accent); }
 
+  /* search index (docs/search.md) */
+  .ix-state { color: var(--text); font-weight: 550; }
+  .ix table { margin: 8px 0 4px; font-size: 14px; }
+  .ix th, .ix td { padding: 6px 4px; }
+  .ix tr.rep td { padding-top: 0; color: var(--muted); font-size: 12px; }
+  .ix tr.has-rep td { border-bottom: 0; }
+  .ix .num { text-align: right; }
+  .ix small { color: var(--muted); }
+
+  /* scanning with the phone's camera (docs/scan.md) */
+  .scan { position: fixed; inset: 0; z-index: 25; display: flex; flex-direction: column; background: var(--bg); }
+  .scan-body { flex: 1; overflow: auto; padding: 16px; }
+  .pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .pg { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+        display: flex; flex-direction: column; }
+  .pg canvas { display: block; width: 100%; height: 180px; object-fit: contain; background: var(--bar); }
+  .pg-bar { display: flex; align-items: center; padding: 2px 2px 2px 10px; }
+  .pg-n { flex: 1; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pg.add { border-style: dashed; align-items: stretch; min-height: 216px; padding: 8px; gap: 8px; }
+  .add-cam { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+             border: 0; background: none; border-radius: 8px; cursor: pointer; color: var(--accent);
+             font-weight: 600; padding: 8px; text-align: center; }
+  .add-cam:hover { background: var(--hover); }
+  .add-cam svg { width: 34px; height: 34px; stroke-width: 1.5; }
+  .add-cam small { color: var(--muted); font-weight: 400; }
+  .pg.add .btn { justify-content: center; font-size: 13px; }
+  .pages.busy { pointer-events: none; opacity: .6; }
+  .scan-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px;
+               padding-bottom: max(12px, env(safe-area-inset-bottom)); background: var(--panel);
+               border-top: 1px solid var(--border); }
+  .scan-foot input[type=text] { flex: 1 1 200px; width: auto; }
+  select { font: inherit; color: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+           background: var(--bg); }
+
   @media (max-width: 640px) {
     header { padding: 10px 12px; }
     main { padding: 12px; }
@@ -204,6 +238,7 @@
   <header>
     <a class="brand" href="#/"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M5 13 7 5h10l2 8M7 16.5h.01"/></svg>shelf</a>
     <form class="search" id="search-form" role="search" hidden><span data-icon="search"></span><input type="search" id="q" placeholder="Search in files" aria-label="Search in files" enterkeyhint="search" autocomplete="off"></form>
+    <button class="icon-btn" id="index-btn" title="Search index: how current it is" hidden><span data-icon="history"></span></button>
     <div class="spacer"></div>
     <span class="who" id="who"></span>
     <button class="btn" id="connect-btn"><span data-icon="link"></span><span class="hide-sm">Connect a drive</span></button>
@@ -217,6 +252,7 @@
       <div id="tools" class="bar" style="margin:0">
         <button class="btn" id="mkdir-btn"><span data-icon="folderPlus"></span><span class="hide-sm">New folder</span></button>
         <button class="btn" id="zip-btn" title="Download this folder as zip"><span data-icon="download"></span><span class="hide-sm">Download all</span></button>
+        <button class="btn" id="scan-btn" title="Scan pages with the camera into a PDF"><span data-icon="camera"></span>Scan</button>
         <button class="btn" id="upfolder-btn"><span data-icon="folderUp"></span><span class="hide-sm">Upload folder</span></button>
         <button class="btn primary" id="upload-btn"><span data-icon="upload"></span>Upload</button>
       </div>
@@ -242,6 +278,24 @@
   </div>
   <div class="v-body" id="v-body"></div>
 </div>
+<div class="scan" id="scan" hidden>
+  <div class="v-bar">
+    <button class="icon-btn" id="scan-close" title="Close"><span data-icon="back"></span></button>
+    <span class="v-title" id="scan-title">Scan</span>
+  </div>
+  <div class="scan-body"><div class="pages" id="scan-pages"></div></div>
+  <div class="scan-foot">
+    <input type="text" id="scan-name" aria-label="File name" autocomplete="off">
+    <select id="scan-mode" aria-label="Look">
+      <option value="doc">Document</option>
+      <option value="gray">Grayscale</option>
+      <option value="color">Color</option>
+    </select>
+    <button class="btn primary" id="scan-save" disabled><span data-icon="upload"></span><span id="scan-save-label">Save PDF</span></button>
+  </div>
+</div>
+<input type="file" id="scan-camera" accept="image/*" capture="environment" hidden>
+<input type="file" id="scan-pick" accept="image/*" multiple hidden>
 <dialog id="dlg"></dialog>
 
 <script>
@@ -271,6 +325,9 @@ const ICONS = {
   zoomIn: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
   zoomOut: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6"/>',
+  camera: '<path d="M4 8a2 2 0 0 1 2-2h2l2-2h4l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/>',
+  rotate: '<path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"/>',
+  history: '<path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3M3 3v5.3h5.3M12 7.5V12l3 2"/>',
 };
 function icon(name, cls = '') {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -399,6 +456,7 @@ async function whoami(r) {
   officeExts = me.office || [];
   searchOn = !!me.search;
   $('search-form').hidden = !searchOn;
+  $('index-btn').hidden = !searchOn;
 }
 // Office documents open in grind's page, which fetches them from WebDAV (docs/office.md).
 const isOffice = name => officeExts.some(x => name.toLowerCase().endsWith(x));
@@ -459,7 +517,7 @@ function renderCrumbs() {
   if (parts.length && state.readOnly) nav.append(el('span', { class: 'badge' }, 'read-only'));
   const atRoot = state.path === '/';
   $('tools').hidden = atRoot;
-  for (const id of ['mkdir-btn', 'upload-btn', 'upfolder-btn']) $(id).disabled = state.readOnly;
+  for (const id of ['mkdir-btn', 'upload-btn', 'upfolder-btn', 'scan-btn']) $(id).disabled = state.readOnly;
 }
 
 function renderShares(shares) {
@@ -524,6 +582,7 @@ async function search(q) {
   $('login').hidden = true;
   $('app').hidden = false;
   let d;
+  const ix = api('/api/index').then(r => r.json()).catch(() => null);
   try {
     d = await (await api('/api/search?q=' + encodeURIComponent(q))).json();
   } catch (e) {
@@ -531,8 +590,11 @@ async function search(q) {
     return;
   }
   if (parseHash().q !== q) return; // a newer search is under way
+  const age = indexAge(await ix);
+  const ageLink = () => age && el('a', { href: '#', onclick: e => { e.preventDefault(); indexDialog(); } }, age);
+  const ageNote = age && [' · ', ageLink()];
   if (!d.results.length) {
-    $('view').replaceChildren(el('div', { class: 'panel empty' }, `Nothing found for “${q}”.`));
+    $('view').replaceChildren(el('div', { class: 'panel empty' }, `Nothing found for “${q}”.`, age && el('br'), ageLink()));
     return;
   }
   const hits = d.results.map(h => {
@@ -553,8 +615,84 @@ async function search(q) {
   $('view').replaceChildren(
     el('p', { class: 'hits-note' }, d.truncated
       ? `The first ${hits.length} files found; another word finds fewer.`
-      : `${hits.length} ${hits.length === 1 ? 'file' : 'files'} found`),
+      : `${hits.length} ${hits.length === 1 ? 'file' : 'files'} found`, ageNote),
     el('div', { class: 'panel' }, hits));
+}
+
+// ---------- the search index: how current it is, and updating it (docs/search.md)
+const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+function ago(iso) {
+  const s = (new Date(iso) - Date.now()) / 1000, a = Math.abs(s);
+  if (a < 45) return s < 0 ? 'just now' : 'in a moment';
+  const [v, u] = a < 3600 ? [s / 60, 'minute'] : a < 86400 ? [s / 3600, 'hour'] : [s / 86400, 'day'];
+  return rtf.format(Math.round(v), u);
+}
+const every = s => s % 3600 === 0 ? (s === 3600 ? 'hour' : `${s / 3600} hours`) : `${Math.round(s / 60)} minutes`;
+// The oldest of the user's shares decides how current the index is for them.
+function oldestScan(d) {
+  if (!d?.shares.length || d.shares.some(s => !s.scanned)) return null;
+  return d.shares.map(s => s.scanned).sort()[0];
+}
+function indexAge(d) {
+  if (!d) return null;
+  if (d.running) return 'the index is being updated';
+  const t = oldestScan(d);
+  return t ? `index updated ${ago(t)}` : 'not everything is indexed yet';
+}
+
+async function indexDialog() {
+  const dlg = $('dlg'), box = el('div', { class: 'ix' }, el('p', {}, 'Loading…'));
+  const btn = el('button', { type: 'button', class: 'btn primary', id: 'ix-update' }, 'Update now');
+  let timer;
+  const refresh = async () => {
+    clearTimeout(timer);
+    let d;
+    try { d = await (await api('/api/index')).json(); } catch (e) {
+      box.replaceChildren(el('p', { class: 'error' }, e.message));
+      return;
+    }
+    render(d);
+    if (dlg.open && dlg.contains(box)) timer = setTimeout(refresh, d.running || d.queued ? 2000 : 15000);
+  };
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try { await api('/api/index', { method: 'POST' }); } catch (e) { toast(e.message, true); }
+    refresh();
+  };
+  const render = d => {
+    const t = oldestScan(d);
+    const state = d.running ? `Updating now, started ${ago(d.started)}…`
+      : d.queued ? 'Starting…'
+      : t ? `Updated ${ago(t)}` : 'Not everything is indexed yet';
+    const auto = d.every ? `It updates by itself shortly after files change through shelf, and every ${every(d.every)} for files changed on the disk directly.`
+                         : 'It updates by itself shortly after files change through shelf.';
+    const rows = d.shares.flatMap(s => [
+      el('tr', { class: s.report ? 'has-rep' : '' },
+        el('td', {}, s.name),
+        el('td', { class: 'num' }, s.files == null ? '–' : `${s.files.toLocaleString()} files`),
+        el('td', { class: 'num', title: s.scanned ? new Date(s.scanned).toLocaleString() : '' }, s.scanned ? ago(s.scanned) : 'never')),
+      s.report && el('tr', { class: 'rep' }, el('td', { colspan: 3 }, 'Last run: ' + s.report)),
+    ]);
+    const tot = d.totals;
+    box.replaceChildren(
+      el('p', { class: 'ix-state' }, state),
+      d.error && el('p', { class: 'error' }, 'The last run failed: ' + d.error),
+      el('p', {}, auto, d.next && !d.running ? ` Next update ${ago(d.next)}.` : ''),
+      el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Share'), el('th', { class: 'num' }, 'Files'), el('th', { class: 'num' }, 'Last read'))),
+        el('tbody', {}, rows)),
+      tot && el('small', {}, `${tot.documents.toLocaleString()} documents, ${tot.with_text.toLocaleString()} with text` +
+        (tot.awaiting_ocr ? `, ${tot.awaiting_ocr.toLocaleString()} waiting for OCR` : '') + '.'));
+    btn.disabled = d.running || d.queued;
+    btn.textContent = d.running ? 'Updating…' : 'Update now';
+  };
+  dlg.replaceChildren(el('form', { method: 'dialog' },
+    el('h2', {}, 'Search index'),
+    el('p', {}, 'Search finds files by their text once they are indexed. New files are found by their name right away.'),
+    box,
+    el('div', { class: 'row' }, el('button', { type: 'submit', class: 'btn' }, 'Close'), btn)));
+  dlg.onclose = () => clearTimeout(timer);
+  dlg.showModal();
+  refresh();
 }
 
 // ---------- actions
@@ -929,6 +1067,221 @@ async function itemsFromDrop(dt) {
   return out;
 }
 
+// ---------- scanning (docs/scan.md)
+// The phone's own camera takes each page (a file input with capture); the pages become one PDF
+// here in the browser, uploaded like any file. Search reads its text with OCR once indexed.
+const scan = { pages: [], dir: null, busy: false };
+const SCAN_MAX = 2480;   // pixels on the long side: A4 at 210 dpi, plenty for OCR
+const THUMB_MAX = 480;
+
+function stamp() {
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}-${z(d.getMinutes())}`;
+}
+
+function openScan() {
+  if (state.readOnly || state.path === '/') return;
+  scan.pages = [];
+  scan.dir = state.path;
+  $('scan-title').textContent = 'Scan into ' + state.path.slice(1);
+  $('scan-name').value = 'Scan ' + stamp();
+  try { $('scan-mode').value = localStorage.getItem('shelf.scanMode') || 'doc'; } catch { }
+  history.pushState({ scan: true }, '');
+  $('scan').hidden = false;
+  document.documentElement.classList.add('viewing');
+  renderScan();
+}
+function hideScan() {
+  scan.pages = [];
+  $('scan').hidden = true;
+  $('scan-pages').replaceChildren();
+  document.documentElement.classList.remove('viewing');
+}
+const discardOk = async () => !scan.pages.length || await dialog({
+  title: 'Discard this scan?', message: `${scan.pages.length} page(s) will be lost.`, ok: 'Discard', danger: true });
+async function closeScan() {
+  if (scan.busy || !(await discardOk())) return;
+  scan.pages = [];
+  history.back(); // the popstate handler hides it
+}
+window.addEventListener('popstate', async () => {
+  if ($('scan').hidden || history.state?.scan) return;
+  if (scan.busy || scan.pages.length) { // Back: stay unless the pages may go
+    history.pushState({ scan: true }, '');
+    if (scan.busy || !(await discardOk())) return;
+    scan.pages = [];
+    history.back();
+    return;
+  }
+  hideScan();
+});
+
+// draw puts src (a picture or canvas), turned by rot degrees, into a canvas at most max pixels
+// on its long side, in the look mode: 'color', 'gray', or 'doc' (gray, paper made white).
+function draw(src, rot, mode, max) {
+  const k = Math.min(1, max / Math.max(src.width, src.height));
+  const w = Math.round(src.width * k), h = Math.round(src.height * k), turned = rot % 180 !== 0;
+  const c = document.createElement('canvas');
+  c.width = turned ? h : w;
+  c.height = turned ? w : h;
+  const g = c.getContext('2d', { willReadFrequently: mode !== 'color' });
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, c.width, c.height);
+  g.translate(c.width / 2, c.height / 2);
+  g.rotate(rot * Math.PI / 180);
+  g.drawImage(src, -w / 2, -h / 2, w, h);
+  if (mode !== 'color') enhance(g, c.width, c.height, mode === 'doc');
+  return c;
+}
+// enhance makes the picture gray and stretches its levels: for a document, the paper (most of
+// the picture, so the brighter half of it) becomes white and the ink black.
+function enhance(g, w, h, doc) {
+  const img = g.getImageData(0, 0, w, h), d = img.data, hist = new Uint32Array(256);
+  for (let i = 0; i < d.length; i += 4) {
+    const y = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+    d[i] = y;
+    hist[y]++;
+  }
+  const at = q => { let n = 0, lim = q * w * h; for (let v = 0; v < 256; v++) if ((n += hist[v]) >= lim) return v; return 255; };
+  const lo = at(doc ? 0.02 : 0.005), hi = Math.max(lo + 1, at(doc ? 0.55 : 0.995));
+  const map = new Uint8ClampedArray(256);
+  for (let v = 0; v < 256; v++) map[v] = (v - lo) * 255 / (hi - lo);
+  for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = map[d[i]];
+  g.putImageData(img, 0, 0);
+}
+
+async function addPages(files) {
+  for (const file of files) {
+    let bmp;
+    try { bmp = await createImageBitmap(file); } catch {
+      toast(`${file.name || 'The picture'} could not be read`, true);
+      continue;
+    }
+    const preview = draw(bmp, 0, 'color', THUMB_MAX); // kept small; the file is read again to save
+    bmp.close();
+    scan.pages.push({ file, rot: 0, preview });
+  }
+  renderScan();
+  $('scan-pages').lastElementChild?.scrollIntoView({ block: 'nearest' });
+}
+
+function renderScan() {
+  const mode = $('scan-mode').value, n = scan.pages.length;
+  const pages = scan.pages.map((p, i) => {
+    const c = draw(p.preview, p.rot, mode, THUMB_MAX);
+    const move = d => { const [x] = scan.pages.splice(i, 1); scan.pages.splice(i + d, 0, x); renderScan(); };
+    return el('div', { class: 'pg' }, c,
+      el('div', { class: 'pg-bar' },
+        el('span', { class: 'pg-n' }, `${i + 1} / ${n}`),
+        el('button', { class: 'icon-btn', title: 'Earlier', disabled: i === 0, onclick: () => move(-1) }, icon('prev')),
+        el('button', { class: 'icon-btn', title: 'Later', disabled: i === n - 1, onclick: () => move(1) }, icon('next')),
+        el('button', { class: 'icon-btn', title: 'Turn right', onclick: () => { p.rot = (p.rot + 90) % 360; renderScan(); } }, icon('rotate')),
+        el('button', { class: 'icon-btn', title: 'Remove page', onclick: () => { scan.pages.splice(i, 1); renderScan(); } }, icon('trash'))));
+  });
+  $('scan-pages').replaceChildren(...pages,
+    el('div', { class: 'pg add' },
+      el('button', { class: 'add-cam', id: 'scan-add', onclick: () => $('scan-camera').click() },
+        icon('camera'), n ? 'Next page' : 'Take a picture of the first page',
+        el('small', {}, 'Lay the page flat in good light, and fill the picture with it.')),
+      el('button', { class: 'btn', id: 'scan-pick-btn', onclick: () => $('scan-pick').click() }, icon('image'), 'Choose pictures')));
+  $('scan-pages').classList.toggle('busy', scan.busy);
+  $('scan-save').disabled = !n || scan.busy;
+  $('scan-save-label').textContent = n > 1 ? `Save PDF (${n} pages)` : 'Save PDF';
+}
+
+// jpegInfo reads a JPEG's size and number of colour components from its frame header.
+function jpegInfo(b) {
+  for (let i = 2; i + 9 < b.length;) {
+    if (b[i] !== 0xff) { i++; continue; }
+    const m = b[i + 1], len = b[i + 2] << 8 | b[i + 3];
+    if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc)
+      return { h: b[i + 5] << 8 | b[i + 6], w: b[i + 7] << 8 | b[i + 8], comps: b[i + 9] };
+    i += 2 + len;
+  }
+  throw new Error('not a JPEG');
+}
+
+// makePDF puts each JPEG on a page of its own, as wide as A4 and as high as the picture needs.
+// A PDF can hold JPEG data as it is (DCTDecode), so nothing is encoded twice.
+function makePDF(jpegs) {
+  const te = new TextEncoder(), parts = [], offs = [];
+  let len = 0;
+  const put = x => { const b = typeof x === 'string' ? te.encode(x) : x; parts.push(b); len += b.length; };
+  const obj = (n, dict, stream) => {
+    offs[n] = len;
+    put(`${n} 0 obj\n${dict}\n`);
+    if (stream) { put('stream\n'); put(stream); put('\nendstream\n'); }
+    put('endobj\n');
+  };
+  put(new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52, 10, 37, 226, 227, 207, 211, 10])); // %PDF-1.4, binary marker
+  const n = jpegs.length;
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2, `<< /Type /Pages /Kids [${jpegs.map((_, i) => `${3 + 3 * i} 0 R`).join(' ')}] /Count ${n} >>`);
+  jpegs.forEach((data, i) => {
+    const o = 3 + 3 * i, { w, h, comps } = jpegInfo(data);
+    const W = 595.28, H = +(W * h / w).toFixed(2);
+    const cs = comps === 1 ? '/DeviceGray' : comps === 4 ? '/DeviceCMYK' : '/DeviceRGB';
+    const content = te.encode(`q ${W} 0 0 ${H} 0 0 cm /Im Do Q`);
+    obj(o, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im ${o + 2} 0 R >> >> /Contents ${o + 1} 0 R >>`);
+    obj(o + 1, `<< /Length ${content.length} >>`, content);
+    obj(o + 2, `<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace ${cs} /BitsPerComponent 8 /Filter /DCTDecode /Length ${data.length} >>`, data);
+  });
+  const info = 3 + 3 * n, d = new Date(), z = v => String(v).padStart(2, '0');
+  obj(info, `<< /Producer (shelf) /CreationDate (D:${d.getUTCFullYear()}${z(d.getUTCMonth() + 1)}${z(d.getUTCDate())}${z(d.getUTCHours())}${z(d.getUTCMinutes())}${z(d.getUTCSeconds())}Z) >>`);
+  const xref = len;
+  put(`xref\n0 ${info + 1}\n0000000000 65535 f \n` + offs.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n \n').join(''));
+  put(`trailer\n<< /Size ${info + 1} /Root 1 0 R /Info ${info} 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts, { type: 'application/pdf' });
+}
+
+async function saveScan() {
+  let name = $('scan-name').value.trim();
+  if (!/\.pdf$/i.test(name)) name += '.pdf';
+  if (badName(name) || name === '.pdf') return toast('Invalid name', true);
+  const dir = scan.dir;
+  if (current() === dir && state.entries.some(e => e.name === name) &&
+      !(await dialog({ title: 'Replace the file?', message: `“${name}” already exists in this folder.`, ok: 'Replace', danger: true }))) return;
+  const label = $('scan-save-label'), mode = $('scan-mode').value;
+  scan.busy = true;
+  renderScan();
+  try {
+    const jpegs = [];
+    for (const [i, p] of scan.pages.entries()) {
+      label.textContent = `Page ${i + 1} of ${scan.pages.length}…`;
+      const bmp = await createImageBitmap(p.file);
+      const c = draw(bmp, p.rot, mode, SCAN_MAX);
+      bmp.close();
+      const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', mode === 'color' ? 0.85 : 0.8));
+      c.width = c.height = 0; // frees its memory now, on a phone that matters
+      jpegs.push(new Uint8Array(await blob.arrayBuffer()));
+    }
+    const pdf = makePDF(jpegs);
+    await putFile(join(dir, name), pdf, f => { label.textContent = `Uploading ${Math.round(f * 100)} %`; });
+    scan.busy = false;
+    scan.pages = [];
+    history.back();
+    toast(searchOn ? `Saved ${name}. Search finds its text in a minute or two.` : `Saved ${name}`);
+    if (current() === dir) load();
+  } catch (e) {
+    toast('Saving failed: ' + e.message, true);
+  } finally {
+    scan.busy = false;
+    if (!$('scan').hidden) renderScan();
+  }
+}
+
+$('scan-btn').onclick = openScan;
+$('scan-close').onclick = closeScan;
+$('scan-save').onclick = saveScan;
+$('scan-mode').onchange = () => {
+  try { localStorage.setItem('shelf.scanMode', $('scan-mode').value); } catch { }
+  renderScan();
+};
+for (const id of ['scan-camera', 'scan-pick']) {
+  $(id).addEventListener('change', e => { const files = [...e.target.files]; e.target.value = ''; addPages(files); });
+}
+$('index-btn').onclick = indexDialog;
+
 // ---------- wiring
 $('login-form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -949,6 +1302,7 @@ $('v-close').onclick = closeViewer;
 $('v-prev').onclick = () => step(-1);
 $('v-next').onclick = () => step(1);
 document.addEventListener('keydown', e => {
+  if (!$('scan').hidden && e.key === 'Escape' && !$('dlg').open) { e.preventDefault(); closeScan(); return; }
   if ($('viewer').hidden || $('dlg').open || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.key === 'Escape') { e.preventDefault(); closeViewer(); return; }
   // Arrows flip through pictures and videos; in a PDF or a text they scroll.
@@ -976,7 +1330,7 @@ for (const id of ['file-input', 'folder-input']) {
 }
 
 let dragDepth = 0;
-const canDrop = e => $('viewer').hidden && !state.readOnly && state.path !== '/' && e.dataTransfer?.types.includes('Files');
+const canDrop = e => $('viewer').hidden && $('scan').hidden && !state.readOnly && state.path !== '/' && e.dataTransfer?.types.includes('Files');
 window.addEventListener('dragenter', e => { if (canDrop(e)) { e.preventDefault(); dragDepth++; $('drop').hidden = false; } });
 window.addEventListener('dragover', e => { if (canDrop(e)) e.preventDefault(); });
 window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('drop').hidden = true; } });

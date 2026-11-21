@@ -20,7 +20,8 @@ fi
 node "$here/fixtures.js" "$work/files"
 printf 'alice\npw\n' | "$work/shelf" init -c "$work/config.json" -data "$work/files" \
     -listen "127.0.0.1:${PORT:-18090}" >/dev/null 2>&1
-# Search, with a stand-in for clerk: "hello" finds three files, anything else none.
+# Search, with a stand-in for clerk: "hello" finds three files, anything else
+# none. scan notes the time, which status then tells.
 f=$work/files
 cat >"$work/clerk" <<EOF
 #!/bin/sh
@@ -30,6 +31,16 @@ case "\$3:\$word" in find:hello) cat <<'HITS' ;; esac
 {"path":"$f/blob.bin","hash":"00","size":4,"context":null}
 {"path":"$f/notes.md","hash":"00","size":1,"context":"# Notes [Hello] from shelf."}
 HITS
+case "\$3" in
+scan)
+    sleep 1
+    date -u '+%Y-%m-%d %H:%M UTC' >"$work/scanned"
+    echo "$f: 12 files, 1 read; 1 added, 0 moved, 0 copied, 0 changed, 0 removed"
+    echo "  9 with text" ;;
+status)
+    printf 'index\t$work/clerk.sqlite\nfiles\t12\ndocuments\t10\nwith text\t9\n'
+    printf 'folder\t$f\t12 files\tscanned %s\n' "\$(cat "$work/scanned" 2>/dev/null || echo never)" ;;
+esac
 EOF
 chmod +x "$work/clerk"
 : >"$work/clerk.sqlite"
