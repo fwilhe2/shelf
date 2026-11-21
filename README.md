@@ -50,6 +50,9 @@ alt="Search on a phone: a photo of the Apollo 11 plaque, found by the words on i
   download folders as zip, rename, delete, new folder. Works on phones too.
 - **Viewer**: photos, videos, music, PDFs and text files open right in the
   browser. Flip through a folder with the arrow keys or by swiping.
+- **Scan with the phone**: photograph letters page by page with the phone's
+  camera, right in the browser, and save them as one PDF, which search then
+  reads with OCR. No app needed. See [docs/scan.md](docs/scan.md).
 - **Office documents**: open spreadsheets and text documents
   in the browser with grind. See [below](#office-documents).
 - **Full-text search**: find files by the words in their name or
