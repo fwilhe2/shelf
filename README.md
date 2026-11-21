@@ -128,6 +128,9 @@ directory, add a `Volume=` line to the unit first.
 To update: pull the new source, run `podman build -t localhost/shelf:latest .`
 again and then `podman auto-update` (or `systemctl --user restart shelf`).
 
+Before you put your real files in, read [docs/real-data.md](docs/real-data.md):
+how to import them, check the copy, and protect them against disk damage.
+
 To run shelf on Kubernetes instead, with the image CI publishes as
 `ghcr.io/fwilhe2/shelf`, see [deploy/kubernetes](deploy/kubernetes/README.md).
 
