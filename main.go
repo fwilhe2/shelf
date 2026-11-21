@@ -238,16 +238,19 @@ func cmdServe(args []string) error {
 	if sc := srv.search(); sc != nil {
 		if err := sc.validate(cfg.Shares); err != nil {
 			log.Printf("warning: search: %v", err)
-		} else if _, err := os.Stat(sc.Index); err != nil {
-			log.Printf("search: nothing indexed yet, run 'shelf index' (%v)", err)
+		} else if every, err := sc.every(); err != nil {
+			log.Printf("warning: %v", err)
+		} else if every == 0 {
+			log.Printf("search: with clerk's index %s; indexing only after changes and when asked to", sc.Index)
 		} else {
-			log.Printf("search: with clerk's index %s", sc.Index)
+			log.Printf("search: with clerk's index %s, indexing after changes and every %v", sc.Index, every)
 		}
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go srv.watchConfig(ctx)
+	go srv.indexLoop(ctx)
 
 	var certs *certStore
 	if cfg.TLSCert != "" {

@@ -15,7 +15,10 @@ func fakeClerk(t *testing.T, cfg *Config, find []string) (dir string) {
 	t.Helper()
 	dir = t.TempDir()
 	script := fmt.Sprintf("#!/bin/sh\nprintf '%%s\\n' \"$@\" > %[1]s/args.txt\n"+
-		"case \"$3\" in find) cat %[1]s/find.jsonl ;; esac\n", dir)
+		"case \"$3\" in find) cat %[1]s/find.jsonl ;;\n"+
+		"status) cat %[1]s/status.txt ;;\n"+
+		"scan) shift 4; for d; do echo \"$d: 2 files, 1 read; 1 added, 0 moved, 0 copied, 0 changed, 0 removed\"; echo '  1 with text'; done ;;\n"+
+		"esac\n", dir)
 	if err := os.WriteFile(filepath.Join(dir, "clerk"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}

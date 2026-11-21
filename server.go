@@ -45,6 +45,7 @@ type Server struct {
 
 	locks     webdav.LockSystem
 	sessions  sessionStore
+	idx       indexer
 	authCache sync.Map // cache key -> expiry (time.Time); avoids bcrypt on every WebDAV request
 }
 
@@ -53,6 +54,7 @@ func NewServer(cfgPath string) (*Server, error) {
 		cfgPath:  cfgPath,
 		locks:    webdav.NewMemLS(),
 		sessions: sessionStore{m: map[string]session{}},
+		idx:      indexer{kick: make(chan struct{}, 1)},
 	}
 	if err := s.reload(); err != nil {
 		return nil, err
@@ -130,6 +132,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/list", s.api(s.handleList))
 	mux.HandleFunc("GET /api/zip", s.api(s.handleZip))
 	mux.HandleFunc("GET /api/search", s.api(s.handleSearch))
+	mux.HandleFunc("GET /api/index", s.api(s.handleIndexStatus))
+	mux.HandleFunc("POST /api/index", s.api(s.handleIndexStart))
 	mux.HandleFunc(davPrefix+"/", s.handleDAV)
 	mux.HandleFunc(davPrefix, func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = davPrefix + "/"
@@ -538,4 +542,7 @@ func (s *Server) handleDAV(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	h.ServeHTTP(w, r)
+	if slices.Contains(davWriteMethods, r.Method) || r.Method == "COPY" {
+		s.indexSoon()
+	}
 }

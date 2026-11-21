@@ -33,6 +33,9 @@ type SearchConfig struct {
 	Index string `json:"index"`
 	// Clerk is the clerk program; "clerk" on $PATH when empty.
 	Clerk string `json:"clerk,omitempty"`
+	// Every is how often `shelf serve` indexes by itself ("1h" when empty, or
+	// $SHELF_INDEX_EVERY), "off" for never. It also indexes after changes.
+	Every string `json:"every,omitempty"`
 }
 
 func (sc *SearchConfig) validate(shares []Share) error {
@@ -75,43 +78,10 @@ func cmdIndex(args []string) error {
 	if err != nil {
 		return err
 	}
-	sc := searchConfig(cfg)
-	if sc == nil {
-		return errors.New(`search is off: set "search": {"index": "/var/lib/shelf/clerk.sqlite"} in the config (see docs/search.md)`)
-	}
-	if err := sc.validate(cfg.Shares); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(sc.Index), 0o750); err != nil {
-		return err
-	}
-	lock, err := os.OpenFile(sc.Index+".lock", os.O_CREATE|os.O_RDWR, 0o600)
-	if err != nil {
-		return err
-	}
-	defer lock.Close()
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		return errors.New("another 'shelf index' is running")
-	}
-
-	var dirs []string
-	for _, sh := range cfg.Shares {
-		if fi, err := os.Stat(sh.Path); err != nil || !fi.IsDir() {
-			log.Printf("warning: share %q: %s is not an accessible directory, not indexed", sh.Name, sh.Path)
-			continue
-		}
-		dirs = append(dirs, sh.Path)
-	}
-	if len(dirs) == 0 {
-		return errors.New("no share to index")
-	}
-	cmd := sc.command(context.Background(), append([]string{"scan", "--"}, dirs...)...)
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("clerk: %w", err)
-	}
-	return nil
+	return runIndex(cfg, os.Stdout)
 }
+
+func flock(f *os.File) error { return syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) }
 
 // searchConfig is the config's "search", or else the one $SHELF_SEARCH_INDEX
 // (and $SHELF_CLERK) name, or nil when search is off.

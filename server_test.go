@@ -67,6 +67,9 @@ func newTestEnvWith(t *testing.T, edit func(cfg *Config, dirs map[string]string)
 	}
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go srv.indexLoop(ctx)
 	return &testEnv{t: t, ts: ts, dirs: dirs}
 }
 
